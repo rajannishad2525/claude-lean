@@ -22,9 +22,23 @@ if (cmd !== 'doctor' && cmd !== 'fix' && cmd !== 'share') {
 const claudeDir = values('--claude-dir')[0];
 const config = loadConfig({ claudeDir });
 
+const contextFile = values('--context')[0];
+if (contextFile !== undefined && !existsSync(contextFile)) {
+  console.error(`file not found: ${contextFile}`);
+  process.exit(2);
+}
+
 function transcriptFiles({ optional }) {
   const files = values('--file');
-  if (files.length) return files;
+  if (files.length) {
+    for (const f of files) {
+      if (!f || !existsSync(f)) {
+        console.error(`file not found: ${f}`);
+        process.exit(2);
+      }
+    }
+    return files;
+  }
   const root = values('--dir')[0] || join(config.claudeDir, 'projects');
   if (!existsSync(root)) {
     if (optional) return [];
@@ -83,7 +97,6 @@ if (cmd === 'share') {
   process.exit(0);
 }
 
-const contextFile = values('--context')[0];
 const context = contextFile ? parseContext(readFileSync(contextFile, 'utf8')) : null;
 
 if (flag('--json')) {

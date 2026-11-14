@@ -143,3 +143,15 @@ test('doctor and fix follow CLAUDE_CONFIG_DIR when no --claude-dir is given', ()
   assert.match(run(['doctor']), /1 sessions, 30 requests/);
   assert.match(run(['fix']), /would: set env DISABLE_AUTOUPDATER/);
 });
+
+test('a missing --file or --context path gives a clear error and exit 2, not a stack trace', () => {
+  const dir = tmp();
+  for (const extra of [['--file', join(dir, 'nope.jsonl')], ['--file', bigSession(), '--context', join(dir, 'nope.txt')]]) {
+    let err;
+    try { lean(['doctor', '--claude-dir', join(dir, 'claude'), ...extra], dir); } catch (e) { err = e; }
+    assert.ok(err, 'exits non-zero');
+    assert.equal(err.status, 2);
+    assert.match(String(err.stderr), /file not found/i);
+    assert.doesNotMatch(String(err.stderr), /\bat .*\.js:\d+/);
+  }
+});
