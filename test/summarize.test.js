@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { summarizeLines } from '../src/summarize.js';
-import { assistantLine, toolUse, toolResultLine, imageBlock, hookLine, mcpFailLine } from './helpers.js';
+import { assistantLine, toolUse, toolResultLine, imageBlock, hookLine, mcpFailLine, compactLine, scheduledLine, skillListingLine } from './helpers.js';
 
 test('lines sharing a message id count as one request, last usage wins', () => {
   const lines = [
@@ -73,4 +73,53 @@ test('assistant lines with no usage data mark the transcript unsupported', () =>
   assert.equal(bad.requests.length, 0);
   assert.equal(summarizeLines([assistantLine({ id: 'a' })]).unsupported, false);
   assert.equal(summarizeLines([]).unsupported, false);
+});
+
+test('compactions record size, trigger and the idle gap before them; fires and skill listing count once', () => {
+  const min = 60_000;
+  const s = summarizeLines([
+    assistantLine({ id: 'a', cr: 100, at: 0 }),
+    compactLine('c1', 20 * min, 250000, 'manual'),
+    compactLine('c1', 20 * min, 250000, 'manual'), // repeated line
+    scheduledLine('f1', 21 * min), scheduledLine('f1', 21 * min), scheduledLine('f2', 22 * min),
+    skillListingLine('k1', 12000), skillListingLine('k2', 30000), skillListingLine('k1', 12000),
+  ]);
+  assert.deepEqual(s.compactions, [{ preTokens: 250000, trigger: 'manual', gapMs: 20 * min - 1000 }]);
+  assert.equal(s.scheduledFires, 2);
+  assert.equal(s.skillListingChars, 30000);
+});
+
+test('hook output is also kept per event and command; failed MCP servers are kept by name', () => {
+  const s = summarizeLines([
+    hookLine('SessionStart', 100, 'h1', 'cmdA'), hookLine('SessionStart', 50, 'h2', 'cmdA'), hookLine('UserPromptSubmit', 70, 'h3', 'cmdB'),
+    mcpFailLine('m1'), mcpFailLine('m2', [{ name: 'demo', errorCode: 'x' }]), mcpFailLine('m3', [{ name: 'other' }]),
+  ]);
+  assert.deepEqual(s.hookByCommand, { SessionStart: { cmdA: 150 }, UserPromptSubmit: { cmdB: 70 } });
+  assert.deepEqual([...s.failedMcpNames].sort(), ['demo', 'other']);
+  assert.equal(s.mcpFailures, 2);
+});
+
+test('thinking and visible size accumulate per request across its lines, once per line uuid', () => {
+  const think = { type: 'thinking', thinking: '', signature: 'sig' };
+  const text = { type: 'text', text: 'x'.repeat(360) };
+  const s = summarizeLines([
+    assistantLine({ id: 'a', out: 2000, uuid: 'u1', content: [think] }),
+    assistantLine({ id: 'a', out: 2000, uuid: 'u2', content: [text] }),
+    assistantLine({ id: 'a', out: 2000, uuid: 'u2', content: [text] }), // repeated line
+  ]);
+  assert.equal(s.requests.length, 1);
+  assert.equal(s.requests[0].thinking, true);
+  assert.equal(s.requests[0].visible, 360);
+});
+
+test('first-turn search calls and big Bash results are counted', () => {
+  const searches = Array.from({ length: 25 }, (_, i) => toolUse(`t${i}`, i % 2 ? 'Grep' : 'Glob'));
+  const s = summarizeLines([
+    assistantLine({ id: 'a', content: searches }),
+    assistantLine({ id: 'b', content: [toolUse('b1', 'Bash'), toolUse('b2', 'Bash')] }),
+    toolResultLine('b1', 'x'.repeat(25000)),
+    toolResultLine('b2', 'short'),
+  ]);
+  assert.equal(s.firstSearchCalls, 20, 'only the first 20 tool calls of a session count');
+  assert.equal(s.bigBashResults, 1);
 });
