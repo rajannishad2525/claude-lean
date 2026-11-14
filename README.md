@@ -37,6 +37,11 @@ node bin/lean.js doctor --claude-dir /path/to/.claude   # use another Claude con
 node bin/lean.js fix                         # dry run: shows what would change, writes nothing
 node bin/lean.js fix --apply                 # backs up settings.json, then writes
 node bin/lean.js fix --include-unverified    # also act on rules whose setting names are not confirmed in docs
+
+node bin/lean.js share                       # anonymized aggregate stats (prints JSON, sends nothing)
+node bin/lean.js share --out stats.json
+
+claude --plugin-dir ./plugin                 # try the guards plugin (see "Guards plugin" below)
 ```
 
 ## What it detects
@@ -84,9 +89,42 @@ Each finding carries a confidence tag: `official` (the setting and claim are in 
 - It never edits MCP servers, hooks, CLAUDE.md, memory files or project settings. Those findings stay advice.
 - Rules tagged `unverified` are skipped unless you pass `--include-unverified`.
 
+## Guards plugin
+
+`plugin/` is a Claude Code plugin (`lean-guards`) with four guards. They are silent unless something is wrong, and each prints **one line at most**.
+
+| Guard | When | What it does |
+|---|---|---|
+| Context watchdog | each prompt | one line at ~150k and again at ~300k tokens of context, suggesting `/compact` or `/clear` (once per level; resets after `/clear` or `/compact`) |
+| Idle guard | each prompt | one line when you come back after longer than the cache lifetime to a large context ("the next prompt may rebuild a 200k-token cache") |
+| Image guard | before `Read` | denies reading a very large image (over 500 KB by default) with a hint to crop or downscale |
+| Screenshot-loop guard | after screenshot tools | one line every 30 screenshot/scroll calls in a session |
+
+Warnings go to you through the hook's `systemMessage` field, so they do **not** enter Claude's context and cost no tokens. (Plain hook stdout on `UserPromptSubmit` would be added to the context.) The one exception is the image guard's deny reason, which Claude reads so it can adapt. Guards never block your prompts and never fail a session: on any error they print nothing and exit 0.
+
+Try it without installing: `claude --plugin-dir ./plugin`. To stop, stop passing the flag.
+
+Optional settings go in `~/.claude/claude-lean.json` (all keys optional; wrong types are ignored):
+
+```json
+{
+  "ctxWarn": [150000, 300000],
+  "idleMinutes": 5,
+  "idleMinCtx": 100000,
+  "imageMaxKB": 500,
+  "screenshotWarnEvery": 30,
+  "disable": []
+}
+```
+
+`disable` takes any of `"context"`, `"idle"`, `"image"`, `"screenshot"`. The prompt-cache lifetime is 5 minutes or 1 hour depending on your plan and sign-in method; if you have the 1-hour cache, set `idleMinutes` to 60.
+
+## `lean share`
+
+`lean share` prints (or writes with `--out`) a small JSON file so people can compare notes or contribute data for new rules. It contains only: counts (sessions, requests, per-session maxima), shares and percentages, size buckets, how many plugins you have enabled, and the ids and confidence tags of the rules that fired. It contains **no** file paths, commands, message text, plugin names, environment variable names or dates, and the rule evidence strings are left out on purpose. Read it before you post it; claude-lean never sends it anywhere.
+
 ## What it does not do (yet)
 
-- It has no runtime guards. Those are planned (see `docs/superpowers/specs/`), not built.
 - It cannot see the composition of the fixed overhead; run `/context` for that.
 - Some limit drain is server-side and cannot be fixed on the client.
 - The transcript format is internal to Claude Code and may change. One API response is written as several lines; the request count is the number of distinct `message.id` values. If a transcript has assistant lines with no usage data, `lean doctor` prints an "unsupported format" warning and leaves that file out instead of reporting wrong numbers.
