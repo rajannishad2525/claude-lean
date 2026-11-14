@@ -1,0 +1,12 @@
+{
+  "name": "lean-tools",
+  "description": "Tools that find and stop what burns your Claude Code usage limit.",
+  "owner": { "name": "claude-lean contributors" },
+  "plugins": [
+    {
+      "name": "lean-guards",
+      "source": "./plugin",
+      "description": "Silent-by-default guards: context size, idle cache rebuilds, big images and screenshot loops."
+    }
+  ]
+}

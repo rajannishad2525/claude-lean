@@ -45,3 +45,27 @@ test('plugin code is .mjs so it runs without a package.json (installed plugins a
     assert.ok(!/from '\.\.\/\.\.\/src/.test(read(`hooks/${f}`)), `${f} must not import repo code outside plugin/`);
   }
 });
+
+const repoRoot = fileURLToPath(new URL('../', import.meta.url));
+
+test('marketplace manifest lists the plugin, uses a non-reserved name, and versions are in sync', () => {
+  const mk = JSON.parse(readFileSync(join(repoRoot, '.claude-plugin', 'marketplace.json'), 'utf8'));
+  assert.match(mk.name, /^[a-z0-9-]+$/);
+  assert.doesNotMatch(mk.name, /^(claude|anthropic|anthropics|cc-plugin)(-|$)/, 'reserved marketplace name');
+  assert.ok(mk.owner?.name);
+  const entry = mk.plugins.find((p) => p.name === 'lean-guards');
+  assert.ok(entry, 'lean-guards is listed');
+  assert.equal(entry.source, './plugin');
+  const manifest = JSON.parse(read('.claude-plugin/plugin.json'));
+  assert.equal(manifest.name, entry.name);
+  assert.equal(manifest.version, JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).version, 'plugin and package versions match');
+});
+
+test('the plugin ships a square PNG icon', () => {
+  const png = readFileSync(join(root, '.claude-plugin', 'icon.png'));
+  assert.equal(png.subarray(1, 4).toString(), 'PNG');
+  const [w, h] = [png.readUInt32BE(16), png.readUInt32BE(20)];
+  assert.equal(w, h);
+  assert.ok(w >= 512 && w <= 2048);
+  assert.ok(png.length < 2 * 1024 * 1024);
+});

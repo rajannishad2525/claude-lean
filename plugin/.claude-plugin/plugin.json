@@ -1,6 +1,6 @@
 {
   "name": "lean-guards",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Silent-by-default guards that warn before Claude Code burns your usage limit: context size, idle cache rebuilds, big images and screenshot loops.",
   "author": { "name": "claude-lean contributors" }
 }

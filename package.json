@@ -1,6 +1,6 @@
 {
   "name": "claude-lean",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Find what makes Claude Code burn your usage limit, from your own transcripts",
   "type": "module",
   "bin": { "lean": "bin/lean.js" },
