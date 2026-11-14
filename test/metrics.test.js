@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { metrics } from '../src/metrics.js';
-import { req, sess } from './helpers.js';
+import { req, sess, cfg } from './helpers.js';
 
 test('shareRequestsAboveCtx fires and weighs cache-read above the threshold', () => {
   const s = sess([req(100e3), req(600e3, { cr: 600e3 }), req(700e3, { cr: 700e3 })]);
@@ -53,4 +53,46 @@ test('modelShare matches model names case-insensitively', () => {
   const s = sess([req(1, { model: 'claude-opus-5-5' }), req(1, { model: 'claude-opus-5-5' }), req(1, { model: 'claude-sonnet-5-5' })]);
   assert.equal(metrics.modelShare([s], { match: 'opus', minShare: 0.5 }).hit, true);
   assert.equal(metrics.modelShare([s], { match: 'opus', minShare: 0.9 }).hit, false);
+});
+
+test('configAtLeast compares a numeric config fact', () => {
+  const c = cfg({ facts: { claudeMdLines: 250 } });
+  assert.equal(metrics.configAtLeast([], { field: 'claudeMdLines', min: 201 }, c).hit, true);
+  assert.equal(metrics.configAtLeast([], { field: 'claudeMdLines', min: 300 }, c).hit, false);
+});
+
+test('duplicatePlugins targets every copy after the first', () => {
+  const r = metrics.duplicatePlugins([], {}, cfg({ duplicates: [['a@m1', 'a@m2', 'a@m3'], ['b@x', 'b@y']] }));
+  assert.equal(r.hit, true);
+  assert.deepEqual(r.targets, ['a@m2', 'a@m3', 'b@y']);
+  assert.equal(metrics.duplicatePlugins([], {}, cfg()).hit, false);
+});
+
+test('settingState handles absent, present (truthy only), notFalse and prefix', () => {
+  const c = cfg({ settings: { idleCompaction: false, keep: 'x' }, env: { DISABLE_PROMPT_CACHING: '1', DISABLE_PROMPT_CACHING_HAIKU: '0' } });
+  const st = (p) => metrics.settingState([], p, c);
+  assert.equal(st({ source: 'setting', key: 'nope', when: 'absent' }).hit, true);
+  assert.equal(st({ source: 'setting', key: 'keep', when: 'absent' }).hit, false);
+  assert.equal(st({ source: 'setting', key: 'idleCompaction', when: 'notFalse' }).hit, false);
+  assert.equal(st({ source: 'setting', key: 'other', when: 'notFalse' }).hit, true);
+  const p = st({ source: 'env', key: 'DISABLE_PROMPT_CACHING', prefix: true, when: 'present' });
+  assert.equal(p.hit, true);
+  assert.deepEqual(p.targets, ['DISABLE_PROMPT_CACHING']); // the "0" one is not active
+});
+
+test('hookInjection averages estimated tokens per session over the named events', () => {
+  const a = sess([req(1)], { hookChars: { SessionStart: 36000 } });
+  const b = sess([req(1)], { hookChars: { SessionStart: 36000, Other: 99999 } });
+  const r = metrics.hookInjection([a, b], { above: 3000, events: ['SessionStart', 'UserPromptSubmit'] });
+  assert.equal(r.hit, true);
+  assert.equal(r.weightTokens, 20000);
+  assert.match(r.evidence, /~10k tokens per session/);
+  assert.equal(metrics.hookInjection([sess([req(1)])], { above: 3000, events: ['SessionStart'] }).hit, false);
+  assert.equal(metrics.hookInjection([], { above: 3000, events: ['SessionStart'] }).hit, false);
+});
+
+test('config metrics never hit when no config is supplied', () => {
+  assert.equal(metrics.configAtLeast([], { field: 'claudeMdLines', min: 0 }, null).hit, false);
+  assert.equal(metrics.duplicatePlugins([], {}, undefined).hit, false);
+  assert.equal(metrics.settingState([], { source: 'env', key: 'X', when: 'absent' }, null).hit, false);
 });
