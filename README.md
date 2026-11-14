@@ -33,7 +33,8 @@ node bin/lean.js doctor --json               # machine readable
 node bin/lean.js doctor --file session.jsonl # specific session(s)
 node bin/lean.js doctor --dir /path/to/projects
 node bin/lean.js doctor --claude-dir /path/to/.claude   # use another Claude config dir
-node bin/lean.js doctor --context ctx.txt    # also break down the fixed overhead from a pasted /context output
+claude -p "/context" > ctx.txt               # capture what fills your window (a tiny request)
+node bin/lean.js doctor --context ctx.txt    # also break down the fixed overhead from that output
 
 node bin/lean.js fix                         # dry run: shows what would change, writes nothing
 node bin/lean.js fix --apply                 # backs up settings.json, then writes
@@ -90,7 +91,7 @@ Config rules (computed from your settings, env and memory files):
 
 Each finding carries a confidence tag: `official` (the setting and claim are in Anthropic's docs; the source line links the page), `measured` (computed from your transcripts), `unverified` (not confirmed in the docs; currently `hook-stdout-big`, `mcp-failing`, `skill-desc-verbose`, `vague-prompt-scan`, `thinking-heavy`, `plugin-count`, which rest on an internal transcript format, an estimate, or a threshold chosen here).
 
-`lean doctor --context ctx.txt` reads the text of a `/context` run that you paste into a file and ranks what fills the window (MCP tools, skills, memory files, ...). Anthropic does not document that output's layout, so the parser is deliberately loose; if it misses your lines it says so instead of guessing.
+`lean doctor --context ctx.txt` reads the text of a `/context` run and ranks what fills the window (system prompt, tools, skills, MCP tools, memory files, ...), plus the biggest entries of each detail table. Capture it with `claude -p "/context" > ctx.txt` (in Git Bash on Windows prefix `MSYS_NO_PATHCONV=1`, otherwise `/context` is rewritten into a path), or paste the output from an interactive session into a file. Anthropic does not document that layout; the parser is tested on real output of the current Claude Code (Markdown tables) and on older list-style layouts, and says so instead of guessing when it recognises no lines.
 
 ## What `lean fix` changes
 
@@ -117,10 +118,10 @@ Warnings go to you through the hook's `systemMessage` field, so they do **not** 
 
 Try it without installing: `claude --plugin-dir ./plugin`. To stop, stop passing the flag.
 
-Install it from this repository's marketplace (replace `<github-owner>` with the account that hosts the repo):
+Install it from this repository's marketplace:
 
 ```bash
-claude plugin marketplace add <github-owner>/claude-lean
+claude plugin marketplace add rajannishad2525/claude-lean
 claude plugin install lean-guards@lean-tools
 ```
 
