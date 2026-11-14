@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { summarizeFile } from '../src/summarize.js';
@@ -7,14 +7,15 @@ import { evaluate, loadRules } from '../src/rules.js';
 import { formatReport } from '../src/report.js';
 import { loadConfig } from '../src/config.js';
 import { applyFix, planFix } from '../src/fix.js';
+import { buildShare } from '../src/share.js';
 
 const args = process.argv.slice(2);
 const cmd = args.shift();
 const flag = (n) => args.includes(n);
 const values = (n) => args.flatMap((a, i) => (a === n ? [args[i + 1]] : []));
 
-if (cmd !== 'doctor' && cmd !== 'fix') {
-  console.error('usage: lean doctor [--json] [--claude-dir <dir>] [--dir <projects dir>] [--file <session.jsonl>]...\n       lean fix [--apply] [--include-unverified] [--claude-dir <dir>]');
+if (cmd !== 'doctor' && cmd !== 'fix' && cmd !== 'share') {
+  console.error('usage: lean doctor [--json] [--claude-dir <dir>] [--dir <projects dir>] [--file <session.jsonl>]...\n       lean fix [--apply] [--include-unverified] [--claude-dir <dir>]\n       lean share [--out <file>] [--claude-dir <dir>] [--dir <projects dir>] [--file <session.jsonl>]...');
   process.exit(1);
 }
 
@@ -65,6 +66,15 @@ const warnings = unsupported
   ? [`${unsupported} transcript file(s) have assistant lines without usage data (unsupported format?) and were excluded. Claude Code's transcript format may have changed.`]
   : [];
 const findings = evaluate(loadRules(), sessions, config);
+
+if (cmd === 'share') {
+  const out = JSON.stringify(buildShare(sessions, config, findings), null, 2);
+  const file = values('--out')[0];
+  if (file) writeFileSync(file, `${out}\n`);
+  else console.log(out);
+  console.error('Review this before sharing. It holds only counts and rule ids; nothing was sent anywhere.');
+  process.exit(0);
+}
 
 if (flag('--json')) {
   console.log(JSON.stringify({
