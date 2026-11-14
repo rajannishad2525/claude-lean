@@ -67,3 +67,12 @@ test('applyFix creates the file without a backup when settings.json does not exi
   assert.equal(applyFix(path, plan), null);
   assert.deepEqual(JSON.parse(readFileSync(path, 'utf8')), { k: 1 });
 });
+
+test('denyMcp adds one serverName entry per failing server, idempotently, keeping existing entries', () => {
+  const f = finding({ op: 'denyMcp' }, { targets: ['flaky', 'old'] });
+  const plan = planFix({ deniedMcpServers: [{ serverName: 'old' }] }, [f]);
+  assert.deepEqual(plan.next.deniedMcpServers, [{ serverName: 'old' }, { serverName: 'flaky' }]);
+  assert.deepEqual(plan.done, ['deny MCP server flaky']);
+  assert.equal(planFix(plan.next, [f]).done.length, 0);
+  assert.deepEqual(planFix({}, [finding({ op: 'denyMcp' }, { targets: ['x'] })]).next, { deniedMcpServers: [{ serverName: 'x' }] });
+});

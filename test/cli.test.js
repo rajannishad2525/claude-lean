@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assistantLine } from './helpers.js';
+import { assistantLine, mcpFailLine } from './helpers.js';
 
 const BIN = fileURLToPath(new URL('../bin/lean.js', import.meta.url));
 // The machine's real Claude settings must never leak into a test.
@@ -105,4 +105,32 @@ test('fix refuses to touch a settings.json that is not valid JSON', () => {
   const path = join(dir, 'claude', 'settings.json');
   assert.throws(() => lean(['fix', '--apply', '--claude-dir', join(dir, 'claude')], dir), /not valid JSON/);
   assert.equal(readFileSync(path, 'utf8'), '{ not json');
+});
+
+test('fix denies an MCP server that failed in several sessions (unverified rule: needs the flag), from transcripts', () => {
+  const files = {};
+  for (let i = 0; i < 3; i++) files[`claude/projects/p/s${i}.jsonl`] = [assistantLine({ id: `a${i}`, cr: 10 }), mcpFailLine(`m${i}`, [{ name: 'flaky' }])].join('\n');
+  const dir = tmp({ 'claude/settings.json': '{}', ...files });
+  const claudeDir = join(dir, 'claude');
+  const plain = lean(['fix', '--claude-dir', claudeDir], dir);
+  assert.match(plain, /skipped \(unverified.*mcp-failing/);
+  const dry = lean(['fix', '--include-unverified', '--claude-dir', claudeDir], dir);
+  assert.match(dry, /would: deny MCP server flaky/);
+  lean(['fix', '--apply', '--include-unverified', '--claude-dir', claudeDir], dir);
+  assert.deepEqual(JSON.parse(readFileSync(join(claudeDir, 'settings.json'), 'utf8')).deniedMcpServers, [{ serverName: 'flaky' }]);
+});
+
+test('doctor --context prints the overhead breakdown from a pasted /context file', () => {
+  const dir = tmp({ 'ctx.txt': '⛁ MCP tools: 31.5k tokens (15.8%)\n⛁ Skills: 12.0k tokens (6.0%)\n' });
+  const args = ['--claude-dir', join(dir, 'claude'), '--file', bigSession(), '--context', join(dir, 'ctx.txt')];
+  const out = lean(['doctor', ...args], dir);
+  assert.match(out, /Fixed overhead breakdown/);
+  assert.match(out, /MCP tools/);
+  assert.equal(JSON.parse(lean(['doctor', '--json', ...args], dir)).context.items[0].label, 'MCP tools');
+});
+
+test('doctor --context says so when the file has no recognisable token lines', () => {
+  const dir = tmp({ 'ctx.txt': 'hello\n' });
+  const out = lean(['doctor', '--claude-dir', join(dir, 'claude'), '--file', bigSession(), '--context', join(dir, 'ctx.txt')], dir);
+  assert.match(out, /No token lines recognised in/);
 });

@@ -39,6 +39,17 @@ const OPS = {
     }
     return out;
   },
+  denyMcp(s, _e, targets) {
+    const out = R();
+    s.deniedMcpServers ??= [];
+    for (const t of targets) {
+      if (s.deniedMcpServers.some((e) => e?.serverName === t)) continue;
+      s.deniedMcpServers.push({ serverName: t });
+      out.done.push(`deny MCP server ${t}`);
+    }
+    if (!s.deniedMcpServers.length) delete s.deniedMcpServers;
+    return out;
+  },
 };
 
 // Pure: returns { next, done, manual, skipped }. Never touches the disk.
