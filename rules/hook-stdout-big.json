@@ -1,0 +1,18 @@
+{
+  "id": "hook-stdout-big",
+  "title": "Hooks inject a lot of text into every session",
+  "source": "unverified: measured from hook_success attachment lines in transcripts; character-based estimate (chars/3.6)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "hookInjection",
+    "above": 3000,
+    "events": [
+      "SessionStart",
+      "UserPromptSubmit"
+    ]
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Shorten or remove SessionStart/UserPromptSubmit hooks that print long text; that text stays in context and is re-read on every request. Check your hooks in settings.json and plugins."
+  }
+}

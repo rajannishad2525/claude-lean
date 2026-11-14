@@ -1,0 +1,15 @@
+{
+  "id": "claudemd-big",
+  "title": "CLAUDE.md is long",
+  "source": "unverified: 200-line threshold from the spec (to check against https://code.claude.com/docs/en/memory)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "configAtLeast",
+    "field": "claudeMdLines",
+    "min": 201
+  },
+  "fix": {
+    "type": "advice",
+    "text": "CLAUDE.md loads in full every session. Keep it short and move workflows into skills."
+  }
+}

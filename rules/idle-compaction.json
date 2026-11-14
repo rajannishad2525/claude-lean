@@ -1,0 +1,21 @@
+{
+  "id": "idle-compaction",
+  "title": "Background idle compaction may be on",
+  "source": "unverified: setting idleCompaction comes from the design spec; default value unknown",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "settingState",
+    "source": "setting",
+    "key": "idleCompaction",
+    "when": "notFalse"
+  },
+  "fix": {
+    "type": "settings",
+    "text": "Set idleCompaction to false so idle sessions do not compact in the background.",
+    "edit": {
+      "op": "setKey",
+      "key": "idleCompaction",
+      "value": false
+    }
+  }
+}

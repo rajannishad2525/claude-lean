@@ -1,0 +1,16 @@
+{
+  "id": "prompt-suggestions",
+  "title": "Prompt suggestions cost an extra request per turn",
+  "source": "unverified: setting name promptSuggestionEnabled not confirmed in docs",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "settingState",
+    "source": "setting",
+    "key": "promptSuggestionEnabled",
+    "when": "notFalse"
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Turn prompt suggestions off in /config if you do not use them."
+  }
+}

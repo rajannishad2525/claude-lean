@@ -1,0 +1,21 @@
+{
+  "id": "crossession-inbound",
+  "title": "Cross-session messages can open turns while idle",
+  "source": "unverified: setting crossSessionInbound and value \"hold\" come from the design spec",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "settingState",
+    "source": "setting",
+    "key": "crossSessionInbound",
+    "when": "absent"
+  },
+  "fix": {
+    "type": "settings",
+    "text": "Set crossSessionInbound to \"hold\" so idle sessions do not start turns on their own.",
+    "edit": {
+      "op": "setKey",
+      "key": "crossSessionInbound",
+      "value": "hold"
+    }
+  }
+}

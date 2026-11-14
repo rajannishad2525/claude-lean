@@ -1,0 +1,15 @@
+{
+  "id": "mcp-failing",
+  "title": "MCP servers failed to connect",
+  "source": "unverified: counted from failedMcpServers in transcript attachments (internal format, not documented)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "maxPerSession",
+    "field": "mcpFailures",
+    "min": 1
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Remove or disable MCP servers that do not connect (/mcp). A server that is configured but broken still costs startup time and often tool-definition tokens."
+  }
+}

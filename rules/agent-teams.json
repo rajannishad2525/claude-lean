@@ -1,0 +1,16 @@
+{
+  "id": "agent-teams",
+  "title": "Agent teams enabled",
+  "source": "unverified: env CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS and the ~7x token claim come from the design spec",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "settingState",
+    "source": "env",
+    "key": "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+    "when": "present"
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Teams use many times the tokens of one session. Keep teams small and close idle teammates, or unset the variable if you do not use them."
+  }
+}

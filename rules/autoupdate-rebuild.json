@@ -1,0 +1,21 @@
+{
+  "id": "autoupdate-rebuild",
+  "title": "Auto-update can rebuild the cache mid-work",
+  "source": "unverified: env DISABLE_AUTOUPDATER (to check against https://code.claude.com/docs/en/settings)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "settingState",
+    "source": "env",
+    "key": "DISABLE_AUTOUPDATER",
+    "when": "absent"
+  },
+  "fix": {
+    "type": "settings",
+    "text": "Set DISABLE_AUTOUPDATER=1 and update on your own schedule; a version change invalidates the prompt cache.",
+    "edit": {
+      "op": "setEnv",
+      "name": "DISABLE_AUTOUPDATER",
+      "value": "1"
+    }
+  }
+}

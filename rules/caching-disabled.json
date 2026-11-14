@@ -1,0 +1,20 @@
+{
+  "id": "caching-disabled",
+  "title": "Prompt caching is disabled by an environment variable",
+  "source": "unverified: DISABLE_PROMPT_CACHING* variables (to check against https://code.claude.com/docs/en/prompt-caching)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "settingState",
+    "source": "env",
+    "key": "DISABLE_PROMPT_CACHING",
+    "prefix": true,
+    "when": "present"
+  },
+  "fix": {
+    "type": "settings",
+    "text": "Remove DISABLE_PROMPT_CACHING* variables; without caching every request pays full price for the whole context.",
+    "edit": {
+      "op": "removeEnv"
+    }
+  }
+}

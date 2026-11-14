@@ -1,0 +1,15 @@
+{
+  "id": "memory-index-big",
+  "title": "Large MEMORY.md index",
+  "source": "unverified: 25 KB threshold is a heuristic (to check against https://code.claude.com/docs/en/memory)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "configAtLeast",
+    "field": "memoryIndexBytes",
+    "min": 25000
+  },
+  "fix": {
+    "type": "advice",
+    "text": "MEMORY.md is loaded each session. Prune or archive old entries."
+  }
+}

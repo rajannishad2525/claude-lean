@@ -1,0 +1,16 @@
+{
+  "id": "plugin-duplicate",
+  "title": "Same plugin enabled from more than one marketplace",
+  "source": "unverified: measured on one user; settings key enabledPlugins (to check against https://code.claude.com/docs/en/settings)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "duplicatePlugins"
+  },
+  "fix": {
+    "type": "settings",
+    "text": "Keep one copy of each plugin; every enabled plugin adds its skill and agent descriptions to every session.",
+    "edit": {
+      "op": "disablePlugin"
+    }
+  }
+}

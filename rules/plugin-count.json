@@ -1,0 +1,15 @@
+{
+  "id": "plugin-count",
+  "title": "Many plugins enabled",
+  "source": "unverified: threshold is a heuristic; each enabled plugin adds skill descriptions every session (to check against https://code.claude.com/docs/en/costs)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "configAtLeast",
+    "field": "pluginCount",
+    "min": 15
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Disable plugins you do not use (/plugin). Run /context to see what they cost before deciding."
+  }
+}
