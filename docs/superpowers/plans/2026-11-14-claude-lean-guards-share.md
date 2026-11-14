@@ -626,7 +626,7 @@ try {
 `plugin/.claude-plugin/plugin.json`
 ```json
 {
-  "name": "claude-lean-guards",
+  "name": "lean-guards",
   "version": "0.2.0",
   "description": "Silent-by-default guards that warn before Claude Code burns your usage limit: context size, idle cache rebuilds, big images and screenshot loops."
 }

@@ -10,6 +10,9 @@ const read = (p) => readFileSync(join(root, p), 'utf8');
 test('manifest and hooks.json are valid and every command points at a real script', () => {
   const m = JSON.parse(read('.claude-plugin/plugin.json'));
   assert.match(m.name, /^[a-z0-9-]+$/);
+  // `claude plugin validate` rejects third-party names that pose as Anthropic's own.
+  assert.doesNotMatch(m.name, /^(claude|anthropic|anthropics|cc-plugin)(-|$)/, 'reserved plugin name');
+  assert.ok(m.author?.name, 'author is recommended by the validator');
   assert.match(m.version, /^\d+\.\d+\.\d+$/);
   const h = JSON.parse(read('hooks/hooks.json'));
   assert.deepEqual(Object.keys(h.hooks).sort(), ['PostToolUse', 'PreToolUse', 'UserPromptSubmit']);
