@@ -1,0 +1,8 @@
+{
+  "id": "cache-buster",
+  "title": "Cache rebuilt mid-session with no idle gap",
+  "source": "measured; https://code.claude.com/docs/en/prompt-caching (model, effort, fast mode, MCP and plugin changes invalidate the cache)",
+  "confidence": "official",
+  "detect": { "metric": "cacheRebuilds", "minTokens": 150000, "gapMaxMs": 300000, "minCount": 2 },
+  "fix": { "type": "advice", "text": "Large rebuilds right after a request usually come from /model, effort or fast-mode changes, MCP or plugin toggles, or compaction. Make those changes at session start." }
+}

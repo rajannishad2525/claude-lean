@@ -1,0 +1,8 @@
+{
+  "id": "image-read-big",
+  "title": "Many image results in one session",
+  "source": "measured on transcripts; each image stays in context and is re-read on every later request",
+  "confidence": "measured",
+  "detect": { "metric": "maxPerSession", "field": "imageResults", "min": 10 },
+  "fix": { "type": "advice", "text": "Take one screenshot per check, crop or use a small viewport, and do not Read full-page PNGs. Start a fresh session when the visual work is done." }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "cache-idle-rebuild",
+  "title": "Cache rebuilt after an idle gap",
+  "source": "measured; https://code.claude.com/docs/en/prompt-caching (cache TTL depends on plan: 5 min or 1 hour)",
+  "confidence": "official",
+  "detect": { "metric": "cacheRebuilds", "minTokens": 150000, "gapMinMs": 300000, "minCount": 3 },
+  "fix": { "type": "advice", "text": "After a break longer than the cache TTL, the next prompt re-writes the whole context. Use /clear after breaks instead of continuing a huge session; check promptCacheTtl for your plan." }
+}

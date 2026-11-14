@@ -1,0 +1,8 @@
+{
+  "id": "subagent-spawns",
+  "title": "Many subagent spawns in one session",
+  "source": "measured; https://code.claude.com/docs/en/costs (subagent requests count against usage)",
+  "confidence": "official",
+  "detect": { "metric": "maxPerSession", "field": "agentSpawns", "min": 20 },
+  "fix": { "type": "advice", "text": "Spawn subagents only for real parallel work. Each one starts cold and re-derives context; give simple work a smaller model." }
+}

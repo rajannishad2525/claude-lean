@@ -1,0 +1,11 @@
+{
+  "name": "claude-lean",
+  "version": "0.1.0",
+  "description": "Find what makes Claude Code burn your usage limit, from your own transcripts",
+  "type": "module",
+  "bin": { "lean": "bin/lean.js" },
+  "files": ["bin", "src", "rules"],
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test" },
+  "license": "MIT"
+}

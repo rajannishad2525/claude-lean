@@ -1,0 +1,8 @@
+{
+  "id": "ctx-500k",
+  "title": "Context grew past 500k tokens",
+  "source": "measured on transcripts; https://code.claude.com/docs/en/costs",
+  "confidence": "official",
+  "detect": { "metric": "shareRequestsAboveCtx", "above": 500000, "minShare": 0.1 },
+  "fix": { "type": "advice", "text": "Start a fresh session (/clear) for each task. Sessions this large spend almost all their tokens re-reading old history." }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "screenshot-loop",
+  "title": "Screenshot/scroll loop in a browser session",
+  "source": "measured on transcripts (computer-use calls each return a screenshot)",
+  "confidence": "measured",
+  "detect": { "metric": "maxPerSession", "field": "screenshotCalls", "min": 30 },
+  "fix": { "type": "advice", "text": "Use find or read_page instead of scroll-and-screenshot, and keep browser automation in its own short session." }
+}

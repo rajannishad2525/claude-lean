@@ -1,0 +1,8 @@
+{
+  "id": "overhead-high",
+  "title": "Fixed overhead before your first prompt is large",
+  "source": "measured: context of the first request in each session; https://code.claude.com/docs/en/costs",
+  "confidence": "measured",
+  "detect": { "metric": "medianFirstCtx", "above": 60000, "minRequests": 20 },
+  "fix": { "type": "advice", "text": "Run /context to see what fills the window. Common causes: many enabled plugins (skill descriptions), long CLAUDE.md or memory index, hooks that print text every turn. Disable what you do not use." }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "ctx-300k",
+  "title": "Context grew past 300k tokens",
+  "source": "measured on transcripts; https://code.claude.com/docs/en/costs (history is resent on every request)",
+  "confidence": "official",
+  "detect": { "metric": "shareRequestsAboveCtx", "above": 300000, "minShare": 0.25 },
+  "fix": { "type": "advice", "text": "Run /clear between unrelated tasks and /compact at about 150k while the cache is still warm. Every tool call is another request that re-reads the whole context." }
+}

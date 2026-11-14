@@ -1,0 +1,8 @@
+{
+  "id": "opus-default",
+  "title": "Most requests used an Opus model",
+  "source": "https://code.claude.com/docs/en/costs; issue anthropics/claude-code#27665",
+  "confidence": "official",
+  "detect": { "metric": "modelShare", "match": "opus", "minShare": 0.5 },
+  "fix": { "type": "advice", "text": "Use /model to switch routine work to Sonnet and keep Opus for hard reasoning." }
+}
