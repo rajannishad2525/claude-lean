@@ -134,3 +134,12 @@ test('doctor --context says so when the file has no recognisable token lines', (
   const out = lean(['doctor', '--claude-dir', join(dir, 'claude'), '--file', bigSession(), '--context', join(dir, 'ctx.txt')], dir);
   assert.match(out, /No token lines recognised in/);
 });
+
+test('doctor and fix follow CLAUDE_CONFIG_DIR when no --claude-dir is given', () => {
+  const lines = Array.from({ length: 30 }, (_, i) => assistantLine({ id: `r${i}`, cr: 400e3, at: i * 1000 }));
+  const dir = tmp({ 'custom/settings.json': '{}', 'custom/projects/p/s.jsonl': lines.join('\n') });
+  const env = { ...cleanEnv(), CLAUDE_CONFIG_DIR: join(dir, 'custom') };
+  const run = (args) => execFileSync(process.execPath, [BIN, ...args], { encoding: 'utf8', cwd: dir, env, stdio: 'pipe' });
+  assert.match(run(['doctor']), /1 sessions, 30 requests/);
+  assert.match(run(['fix']), /would: set env DISABLE_AUTOUPDATER/);
+});

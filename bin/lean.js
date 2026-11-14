@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { summarizeFile } from '../src/summarize.js';
 import { evaluate, loadRules } from '../src/rules.js';
@@ -26,7 +25,7 @@ const config = loadConfig({ claudeDir });
 function transcriptFiles({ optional }) {
   const files = values('--file');
   if (files.length) return files;
-  const root = values('--dir')[0] || join(claudeDir || join(homedir(), '.claude'), 'projects');
+  const root = values('--dir')[0] || join(config.claudeDir, 'projects');
   if (!existsSync(root)) {
     if (optional) return [];
     console.error(`no transcripts found at ${root}`);

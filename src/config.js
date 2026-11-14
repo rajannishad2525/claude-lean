@@ -40,7 +40,7 @@ function hookOwners(claudeDir, settings) {
 
 // Facts about the user's setup. `settings`/`env` are merged user+project layers (for detection);
 // `userSettings` is the user file alone (the only thing `lean fix` ever writes).
-export function loadConfig({ claudeDir = join(homedir(), '.claude'), cwd = process.cwd(), env = process.env } = {}) {
+export function loadConfig({ claudeDir = process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude'), cwd = process.cwd(), env = process.env } = {}) {
   const userSettingsPath = join(claudeDir, 'settings.json');
   const user = readSettings(userSettingsPath);
   const layers = [user.value, readSettings(join(cwd, '.claude', 'settings.json')).value, readSettings(join(cwd, '.claude', 'settings.local.json')).value];
@@ -58,6 +58,7 @@ export function loadConfig({ claudeDir = join(homedir(), '.claude'), cwd = proce
   const memorySizes = existsSync(projects) ? readdirSync(projects).map((d) => bytes(join(projects, d, 'memory', 'MEMORY.md'))) : [];
 
   return {
+    claudeDir,
     userSettingsPath,
     userSettings: user.value,
     userSettingsError: user.error,

@@ -3,9 +3,35 @@
   "version": "0.3.0",
   "description": "Find what makes Claude Code burn your usage limit, from your own transcripts",
   "type": "module",
-  "bin": { "lean": "bin/lean.js" },
-  "files": ["bin", "src", "rules"],
-  "engines": { "node": ">=18" },
-  "scripts": { "test": "node --test" },
+  "bin": {
+    "lean": "bin/lean.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "rules"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajannishad2525/claude-lean.git"
+  },
+  "homepage": "https://github.com/rajannishad2525/claude-lean#readme",
+  "bugs": {
+    "url": "https://github.com/rajannishad2525/claude-lean/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "usage",
+    "tokens",
+    "prompt-caching",
+    "cli"
+  ],
   "license": "MIT"
 }

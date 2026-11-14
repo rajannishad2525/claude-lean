@@ -24,10 +24,10 @@ Every tool call is another API request, and every request re-reads the whole con
 
 ## Use
 
-Needs Node 18+. No dependencies.
+Needs Node 18 or newer and no packages. It is tested on Linux, macOS and Windows with Node 18, 20 and 22 (see the `test` workflow). It reads `~/.claude`, or the directory in `CLAUDE_CONFIG_DIR` if you set that variable (or pass `--claude-dir`).
 
 ```bash
-git clone <this repo> && cd claude-lean
+git clone https://github.com/rajannishad2525/claude-lean.git && cd claude-lean
 node bin/lean.js doctor                      # all sessions under ~/.claude/projects
 node bin/lean.js doctor --json               # machine readable
 node bin/lean.js doctor --file session.jsonl # specific session(s)
@@ -102,6 +102,7 @@ Each finding carries a confidence tag: `official` (the setting and claim are in 
 - The one MCP edit: `mcp-failing` can add a server to `deniedMcpServers` (`{"serverName": ...}`), only for a server that failed in 3+ sessions and never connected in any, and only with `--include-unverified` (its detection reads an internal transcript format). Delete the entry to bring the server back.
 - It never edits hooks, CLAUDE.md, memory files or project settings. Those findings stay advice (`hook-stdout-big` tells you which plugin or settings hook is the biggest source instead).
 - Rules tagged `unverified` are skipped unless you pass `--include-unverified`.
+- Some settings only exist in recent Claude Code versions (for example `idleCompaction` needs v2.1.290 or later, `promptCacheTtl` and `CLAUDE_CODE_GOAL_CHECKIN_MINUTES` v2.1.242 or later). Run `claude --version` first and use `lean fix` as a dry run; on an older version those keys may be ignored or reported as unknown.
 
 ## Guards plugin
 
@@ -115,6 +116,8 @@ Each finding carries a confidence tag: `official` (the setting and claim are in 
 | Screenshot-loop guard | after screenshot tools | one line every 30 screenshot/scroll calls in a session |
 
 Warnings go to you through the hook's `systemMessage` field, so they do **not** enter Claude's context and cost no tokens. (Plain hook stdout on `UserPromptSubmit` would be added to the context.) The one exception is the image guard's deny reason, which Claude reads so it can adapt. Guards never block your prompts and never fail a session: on any error they print nothing and exit 0.
+
+**Requires Node 18+ on your `PATH`.** The guards are small Node scripts, and Claude Code's native installer does not install Node. Without Node the hooks cannot start and Claude Code shows a "hook error" notice on tool calls (it never blocks your work); install Node or remove the plugin.
 
 Try it without installing: `claude --plugin-dir ./plugin`. To stop, stop passing the flag.
 

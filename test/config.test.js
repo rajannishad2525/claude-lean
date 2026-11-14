@@ -69,3 +69,21 @@ test('hookOwners is empty (no crash) when installed_plugins.json is missing or b
   const broken = dirWith({ 'plugins/installed_plugins.json': '{ nope' });
   assert.equal(loadConfig({ claudeDir: broken, cwd: dirWith(), env: {} }).hookOwners.size, 0);
 });
+
+test('loadConfig follows CLAUDE_CONFIG_DIR when no dir is passed, like Claude Code does', () => {
+  const dir = dirWith({ 'settings.json': JSON.stringify({ env: { FROM_CUSTOM_DIR: '1' } }) });
+  const old = process.env.CLAUDE_CONFIG_DIR;
+  process.env.CLAUDE_CONFIG_DIR = dir;
+  try {
+    const c = loadConfig({ cwd: dirWith(), env: {} });
+    assert.equal(c.claudeDir, dir);
+    assert.equal(c.env.FROM_CUSTOM_DIR, '1');
+  } finally {
+    if (old === undefined) delete process.env.CLAUDE_CONFIG_DIR; else process.env.CLAUDE_CONFIG_DIR = old;
+  }
+});
+
+test('an explicit claudeDir wins over the environment and is reported back', () => {
+  const dir = dirWith();
+  assert.equal(loadConfig({ claudeDir: dir, cwd: dirWith(), env: {} }).claudeDir, dir);
+});
