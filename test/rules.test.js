@@ -8,7 +8,7 @@ import { req, sess, cfg } from './helpers.js';
 
 test('shipped rules all load, have unique ids and a valid confidence tag', () => {
   const rules = loadRules();
-  assert.equal(rules.length, 23);
+  assert.equal(rules.length, 30);
   assert.equal(new Set(rules.map((r) => r.id)).size, rules.length);
   for (const r of rules) assert.ok(['official', 'measured', 'unverified'].includes(r.confidence), r.id);
 });
@@ -95,11 +95,43 @@ test('transcript-derived rules hook-stdout-big and mcp-failing fire and stay qui
   const pick = (id) => loadRules().filter((r) => r.id === id);
   assert.equal(evaluate(pick('hook-stdout-big'), [sess([req(1)], { hookChars: { SessionStart: 36000 } })], cfg()).length, 1);
   assert.equal(evaluate(pick('hook-stdout-big'), [sess([req(1)], { hookChars: { SessionStart: 100 } })], cfg()).length, 0);
-  assert.equal(evaluate(pick('mcp-failing'), [sess([req(1)], { mcpFailures: 2 })], cfg()).length, 1);
-  assert.equal(evaluate(pick('mcp-failing'), [sess([req(1)])], cfg()).length, 0);
+  const flaky = () => sess([req(1)], { failedMcpNames: ['demo'] });
+  const hit = evaluate(pick('mcp-failing'), [flaky(), flaky(), flaky()], cfg());
+  assert.equal(hit.length, 1);
+  assert.deepEqual(hit[0].targets, ['demo']);
+  assert.equal(evaluate(pick('mcp-failing'), [flaky(), flaky()], cfg()).length, 0);
 });
 
 test('findings carry targets from the metric', () => {
   const f = evaluate(loadRules().filter((r) => r.id === 'plugin-duplicate'), [], cfg({ duplicates: [['a@m1', 'a@m2']] }));
   assert.deepEqual(f[0].targets, ['a@m2']);
+});
+
+test('the seven remaining transcript rules fire and stay quiet', () => {
+  const min = 60_000;
+  const fire = (id, ...sessions) => evaluate(loadRules().filter((r) => r.id === id), sessions, cfg()).length;
+  assert.equal(fire('skill-desc-verbose', sess([req(1)], { skillListingChars: 30000 })), 1);
+  assert.equal(fire('skill-desc-verbose', sess([req(1)], { skillListingChars: 5000 })), 0);
+  const compact = (preTokens, gapMs) => sess([req(1)], { compactions: [{ preTokens, trigger: 'manual', gapMs }] });
+  assert.equal(fire('compact-cold', compact(250000, 20 * min)), 1);
+  assert.equal(fire('compact-cold', compact(250000, 1 * min)), 0);
+  assert.equal(fire('compact-cold', compact(20000, 20 * min)), 0);
+  assert.equal(fire('loop-idle', sess([req(1)], { scheduledFires: 5 })), 1);
+  assert.equal(fire('loop-idle', sess([req(1)], { scheduledFires: 1 })), 0);
+  assert.equal(fire('verbose-output', sess([req(1)], { bigBashResults: 4 })), 1);
+  assert.equal(fire('verbose-output', sess([req(1)], { bigBashResults: 1 })), 0);
+  assert.equal(fire('vague-prompt-scan', sess([req(1)], { firstSearchCalls: 15 })), 1);
+  assert.equal(fire('vague-prompt-scan', sess([req(1)], { firstSearchCalls: 3 })), 0);
+  const rebuilds = (gapMs) => sess([0, 1, 2].map(() => req(200e3, { cc: 200e3, gapMs })));
+  assert.equal(fire('cache-ttl-5m', rebuilds(20 * min)), 1);
+  assert.equal(fire('cache-ttl-5m', rebuilds(2 * 60 * min)), 0, 'a 2 hour gap is past even a 1-hour TTL');
+  assert.equal(fire('cache-ttl-5m', rebuilds(2 * min)), 0, 'a 2 minute gap is a mid-session rebuild, not a TTL expiry');
+});
+
+test('thinking-heavy only looks at models where thinking can be tuned (the models filter in use)', () => {
+  const many = (model) => sess(Array.from({ length: 60 }, () => req(10e3, { model, out: 3000, thinking: true, visible: 360 })));
+  const fire = (s) => evaluate(loadRules().filter((r) => r.id === 'thinking-heavy'), [s], cfg()).length;
+  assert.equal(fire(many('claude-sonnet-4-6')), 1);
+  assert.equal(fire(many('claude-sonnet-5-5')), 0, 'always-adaptive models are skipped');
+  assert.equal(fire(many('claude-opus-5-5')), 0);
 });

@@ -1,0 +1,15 @@
+{
+  "id": "loop-idle",
+  "title": "Loops or scheduled tasks fire while the session is idle",
+  "source": "https://code.claude.com/docs/en/costs (a session-scoped scheduled task fires on its interval even while the session is idle, sending your full context each time); measured from scheduled_task_fire lines",
+  "confidence": "official",
+  "detect": {
+    "metric": "maxPerSession",
+    "field": "scheduledFires",
+    "min": 3
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Stop /loop and scheduled tasks you no longer need; each firing resends your whole context, even while you are away. Keep looping sessions small."
+  }
+}

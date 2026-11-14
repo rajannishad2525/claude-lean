@@ -1,0 +1,16 @@
+{
+  "id": "compact-cold",
+  "title": "Large compactions after a long break",
+  "source": "https://code.claude.com/docs/en/costs (/compact reads the conversation it summarizes, so compacting a large context is itself a large request); https://code.claude.com/docs/en/prompt-caching; measured from compact_boundary lines",
+  "confidence": "official",
+  "detect": {
+    "metric": "compactCold",
+    "minTokens": 100000,
+    "gapMinMs": 300000,
+    "minCount": 1
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Compact while the cache is still warm (before you step away), or /clear and start fresh. Compacting a large context after a long break has to read all of it without a warm cache."
+  }
+}

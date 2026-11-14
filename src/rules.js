@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { metrics } from './metrics.js';
 
 export const RULES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'rules');
-export const EDIT_OPS = ['setKey', 'setEnv', 'removeEnv', 'disablePlugin'];
+export const EDIT_OPS = ['setKey', 'setEnv', 'removeEnv', 'disablePlugin', 'denyMcp'];
 
 export function loadRules(dir = RULES_DIR) {
   return readdirSync(dir)

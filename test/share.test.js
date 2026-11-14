@@ -15,12 +15,14 @@ function fixture() {
   const s1 = sess([req(100e3, { model: 'claude-opus-5-5' }), ...opus(9, 600e3, { cr: 600e3 }), ...opus(15, 40e3)], {
     file: '/home/secret/project/s1.jsonl', hookChars: { SessionStart: 36000 }, imageResults: 12, screenshotCalls: 40, agentSpawns: 3, mcpFailures: 1,
     toolVolume: { SECRET_TOOL: { n: 1, chars: 5 } },
+    hookByCommand: { SessionStart: { 'node SECRET_CMD': 100 } }, failedMcpNames: ['SECRET_MCP'], compactions: [{ preTokens: 1, trigger: 'x', gapMs: 1 }],
   });
   const s2 = sess(Array.from({ length: 25 }, () => req(40e3, { model: 'claude-sonnet-5-5' })));
   const config = cfg({
     facts: { pluginCount: 19, duplicatePluginCount: 1, claudeMdLines: 250, memoryIndexBytes: 30720 },
     plugins: ['SECRET_PLUGIN@secret-market'], duplicates: [['SECRET_PLUGIN@a', 'SECRET_PLUGIN@b']],
     env: { SECRET_ENV: '1' }, userSettingsPath: '/home/secret/.claude/settings.json',
+    hookOwners: new Map([['node SECRET_CMD', 'SECRET_PLUGIN@m']]),
   });
   const sessions = [s1, s2];
   return { sessions, config, findings: evaluate(loadRules(), sessions, config) };

@@ -1,0 +1,26 @@
+{
+  "id": "thinking-heavy",
+  "title": "Large share of output looks like hidden thinking",
+  "source": "unverified: estimate from output-token size (thinking text is mostly omitted from transcripts); settings and model behavior: https://code.claude.com/docs/en/env-vars (MAX_THINKING_TOKENS), https://code.claude.com/docs/en/settings-reference (alwaysThinkingEnabled)",
+  "confidence": "unverified",
+  "models": [
+    "opus-4-6",
+    "sonnet-4-6",
+    "opus-4-5",
+    "sonnet-4-5",
+    "haiku-4-5",
+    "opus-4-1",
+    "claude-opus-4-2",
+    "claude-sonnet-4-2",
+    "3-7-sonnet"
+  ],
+  "detect": {
+    "metric": "thinkingShare",
+    "minTokens": 100000,
+    "minShare": 0.3
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Thinking is billed as output. Lower effort with /effort, or set alwaysThinkingEnabled to false, for routine work. Models that always use adaptive reasoning (Fable, Sonnet 5 and later, Haiku 5.5, Opus 4.7 and later) are excluded because thinking cannot be turned off there."
+  }
+}

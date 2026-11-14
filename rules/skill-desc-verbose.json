@@ -1,0 +1,15 @@
+{
+  "id": "skill-desc-verbose",
+  "title": "The skill list sent every session is very large",
+  "source": "unverified: measured from skill_listing attachments in transcripts (internal format). Budget and controls: https://code.claude.com/docs/en/env-vars (SLASH_COMMAND_TOOL_CHAR_BUDGET), https://code.claude.com/docs/en/skills (disable-model-invocation)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "maxPerSession",
+    "field": "skillListingChars",
+    "min": 20000
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Every session starts with the names and descriptions of all enabled skills. Disable plugins you do not use, set disable-model-invocation: true on skills only you should trigger, and shorten long descriptions."
+  }
+}

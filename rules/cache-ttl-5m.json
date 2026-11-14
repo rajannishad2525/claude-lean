@@ -1,0 +1,17 @@
+{
+  "id": "cache-ttl-5m",
+  "title": "Cache expired within an hour (five-minute lifetime in effect)",
+  "source": "https://code.claude.com/docs/en/prompt-caching (five-minute and one-hour TTLs; promptCacheTtl / CLAUDE_CODE_PROMPT_CACHE_TTL take 5m or 1h; one-hour cache writes cost more). Replaces the spec's ttl-regression, whose version claim is unverified.",
+  "confidence": "official",
+  "detect": {
+    "metric": "cacheRebuilds",
+    "minTokens": 100000,
+    "gapMinMs": 300000,
+    "gapMaxMs": 3600000,
+    "minCount": 3
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Rebuilds after pauses of 5 to 60 minutes mean those requests had the five-minute cache lifetime. If you pause like that often, set promptCacheTtl to 1h (settings, or CLAUDE_CODE_PROMPT_CACHE_TTL). The API bills one-hour cache writes at a higher rate, so it only pays off if you regularly come back within the hour."
+  }
+}

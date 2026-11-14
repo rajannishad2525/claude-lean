@@ -96,3 +96,46 @@ test('config metrics never hit when no config is supplied', () => {
   assert.equal(metrics.duplicatePlugins([], {}, undefined).hit, false);
   assert.equal(metrics.settingState([], { source: 'env', key: 'X', when: 'absent' }, null).hit, false);
 });
+
+test('compactCold counts big compactions after an idle gap and sums the tokens', () => {
+  const min = 60_000;
+  const s = sess([req(1)], { compactions: [
+    { preTokens: 250000, trigger: 'manual', gapMs: 20 * min },
+    { preTokens: 250000, trigger: 'manual', gapMs: 1 * min },
+    { preTokens: 30000, trigger: 'auto', gapMs: 30 * min },
+    { preTokens: 300000, trigger: 'auto', gapMs: null },
+  ] });
+  const r = metrics.compactCold([s], { minTokens: 100000, gapMinMs: 5 * min, minCount: 1 });
+  assert.equal(r.hit, true);
+  assert.equal(r.weightTokens, 250000);
+  assert.match(r.evidence, /1 compactions of >=100k tokens.*250k tokens/);
+  assert.equal(metrics.compactCold([s], { minTokens: 100000, gapMinMs: 5 * min, minCount: 2 }).hit, false);
+});
+
+test('mcpPersistent needs the same server to fail in enough sessions and returns its name as a target', () => {
+  const flaky = () => sess([req(1)], { failedMcpNames: ['demo'] });
+  const r = metrics.mcpPersistent([flaky(), flaky(), flaky(), sess([req(1)], { failedMcpNames: ['once'] })], { minSessions: 3 });
+  assert.equal(r.hit, true);
+  assert.deepEqual(r.targets, ['demo']);
+  assert.doesNotMatch(r.evidence, /demo|once/, 'evidence never names servers');
+  assert.equal(metrics.mcpPersistent([flaky(), flaky()], { minSessions: 3 }).hit, false);
+});
+
+test('thinkingShare estimates hidden thinking from output size on responses that contain a thinking block', () => {
+  const think = (o = {}) => req(10e3, { out: 3000, thinking: true, visible: 360, ...o });
+  const many = Array.from({ length: 60 }, () => think());
+  const r = metrics.thinkingShare([sess(many)], { minTokens: 100000, minShare: 0.3 });
+  assert.equal(r.hit, true);
+  assert.equal(r.weightTokens, 174000);
+  assert.match(r.evidence, /estimate/);
+  assert.equal(metrics.thinkingShare([sess(many.map(() => think({ thinking: false })))], { minTokens: 1, minShare: 0.1 }).hit, false);
+  assert.equal(metrics.thinkingShare([], { minTokens: 1, minShare: 0.1 }).hit, false);
+});
+
+test('hookInjection names the biggest sources when owners are known', () => {
+  const s = sess([req(1)], { hookChars: { SessionStart: 36000 }, hookByCommand: { SessionStart: { cmdA: 30000, cmdB: 6000 } } });
+  const config = cfg({ hookOwners: new Map([['cmdA', 'plugin-a@m'], ['cmdB', 'settings hooks']]) });
+  const r = metrics.hookInjection([s], { above: 3000, events: ['SessionStart'] }, config);
+  assert.match(r.evidence, /biggest sources: plugin-a@m 83%, settings hooks 17%/);
+  assert.match(metrics.hookInjection([s], { above: 3000, events: ['SessionStart'] }).evidence, /biggest sources: unknown source 100%/);
+});

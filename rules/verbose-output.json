@@ -1,0 +1,15 @@
+{
+  "id": "verbose-output",
+  "title": "Very long command output enters the context",
+  "source": "https://code.claude.com/docs/en/costs (custom hooks can preprocess data before Claude sees it; example PreToolUse hook trims test output to its last 100 lines); measured from Bash results of 20,000+ characters",
+  "confidence": "official",
+  "detect": {
+    "metric": "maxPerSession",
+    "field": "bigBashResults",
+    "min": 3
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Trim long command output before it reaches Claude: pipe through tail, or use a PreToolUse hook that keeps the last 100 lines (example in the costs docs)."
+  }
+}

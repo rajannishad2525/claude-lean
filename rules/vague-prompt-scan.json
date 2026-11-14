@@ -1,0 +1,15 @@
+{
+  "id": "vague-prompt-scan",
+  "title": "Broad search fan-out at the start of a session",
+  "source": "unverified: heuristic (Grep/Glob calls among a session's first 20 tool calls); background: https://code.claude.com/docs/en/costs (write specific prompts)",
+  "confidence": "unverified",
+  "detect": {
+    "metric": "maxPerSession",
+    "field": "firstSearchCalls",
+    "min": 12
+  },
+  "fix": {
+    "type": "advice",
+    "text": "Name the file, function or directory in your first prompt, or start in plan mode, so Claude does not search across the whole repo before it begins."
+  }
+}

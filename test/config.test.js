@@ -50,3 +50,22 @@ test('missing settings is empty; invalid settings is flagged so fix can refuse',
   const arr = loadConfig({ claudeDir: dirWith({ 'settings.json': '[]' }), cwd: dirWith(), env: {} });
   assert.equal(arr.userSettingsError, true);
 });
+
+test('hookOwners maps a hook command to the plugin whose hooks.json holds it, or to settings', () => {
+  const claudeDir = dirWith({
+    'settings.json': JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: 'command', command: 'my-own-hook' }] }] } }),
+    'pluginA/hooks/hooks.json': JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'node "${CLAUDE_PLUGIN_ROOT}/x.mjs"' }] }] } }),
+  });
+  mkdirSync(join(claudeDir, 'plugins'), { recursive: true });
+  writeFileSync(join(claudeDir, 'plugins', 'installed_plugins.json'), JSON.stringify({ version: 2, plugins: { 'a@m': [{ scope: 'user', installPath: join(claudeDir, 'pluginA') }], 'b@m': [{ installPath: join(claudeDir, 'missing') }] } }));
+  const c = loadConfig({ claudeDir, cwd: dirWith(), env: {} });
+  assert.equal(c.hookOwners.get('node "${CLAUDE_PLUGIN_ROOT}/x.mjs"'), 'a@m');
+  assert.equal(c.hookOwners.get('my-own-hook'), 'settings hooks');
+  assert.equal(c.hookOwners.size, 2);
+});
+
+test('hookOwners is empty (no crash) when installed_plugins.json is missing or broken', () => {
+  assert.equal(loadConfig({ claudeDir: dirWith(), cwd: dirWith(), env: {} }).hookOwners.size, 0);
+  const broken = dirWith({ 'plugins/installed_plugins.json': '{ nope' });
+  assert.equal(loadConfig({ claudeDir: broken, cwd: dirWith(), env: {} }).hookOwners.size, 0);
+});

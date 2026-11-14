@@ -87,14 +87,55 @@ export const metrics = {
     return { hit, weightTokens: 0, targets, evidence: `${source} ${key}${prefix ? '*' : ''} is ${when === 'notFalse' ? 'not set to false' : when}` };
   }),
 
-  hookInjection(sessions, { above, events }) {
+  hookInjection(sessions, { above, events }, config) {
     const per = sessions.map((s) => sum(events, (e) => s.hookChars?.[e] ?? 0) / 3.6);
     const total = sum(per, (x) => x);
     const mean = per.length ? total / per.length : 0;
+    const hit = per.length > 0 && mean > above;
+    let evidence = `hook output adds ~${Math.round(mean / 1000)}k tokens per session on average (${events.join(' + ')}; estimate from characters)`;
+    if (hit) {
+      const byOwner = new Map();
+      for (const s of sessions) {
+        for (const e of events) {
+          for (const [cmd, n] of Object.entries(s.hookByCommand?.[e] ?? {})) {
+            const owner = config?.hookOwners?.get(cmd) ?? 'unknown source';
+            byOwner.set(owner, (byOwner.get(owner) ?? 0) + n);
+          }
+        }
+      }
+      const all = sum([...byOwner.values()], (x) => x) || 1;
+      const top = [...byOwner].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([o, n]) => `${o} ${pct(n / all)}%`).join(', ');
+      if (top) evidence += `; biggest sources: ${top}`;
+    }
+    return { hit, weightTokens: Math.round(total), evidence };
+  },
+
+  compactCold(sessions, { minTokens, gapMinMs, minCount }) {
+    const hits = sessions.flatMap((s) => s.compactions ?? []).filter((c) => c.preTokens >= minTokens && c.gapMs !== null && c.gapMs >= gapMinMs);
+    const weightTokens = sum(hits, (c) => c.preTokens);
     return {
-      hit: per.length > 0 && mean > above,
-      weightTokens: Math.round(total),
-      evidence: `hook output adds ~${Math.round(mean / 1000)}k tokens per session on average (${events.join(' + ')}; estimate from characters)`,
+      hit: hits.length >= minCount,
+      weightTokens,
+      evidence: `${hits.length} compactions of >=${minTokens / 1000}k tokens ran after an idle gap of >=${Math.round(gapMinMs / 60000)} min (${Math.round(weightTokens / 1000)}k tokens summarized without a warm cache)`,
+    };
+  },
+
+  mcpPersistent(sessions, { minSessions }) {
+    const counts = new Map();
+    for (const s of sessions) for (const name of s.failedMcpNames ?? []) counts.set(name, (counts.get(name) ?? 0) + 1);
+    const targets = [...counts].filter(([, c]) => c >= minSessions).map(([name]) => name).sort();
+    return { hit: targets.length > 0, weightTokens: 0, targets, evidence: `${targets.length} MCP server(s) failed to connect in at least ${minSessions} sessions` };
+  },
+
+  thinkingShare(sessions, { minTokens, minShare }) {
+    const reqs = allRequests(sessions);
+    const est = sum(reqs.filter((r) => r.thinking), (r) => Math.max(0, r.out - r.visible / 3.6));
+    const out = sum(reqs, (r) => r.out);
+    const share = out ? est / out : 0;
+    return {
+      hit: est >= minTokens && share >= minShare,
+      weightTokens: Math.round(est),
+      evidence: `~${Math.round(est / 1000)}k of ${Math.round(out / 1000)}k output tokens look like hidden thinking (${pct(share)}%; estimate from output size)`,
     };
   },
 };

@@ -47,7 +47,7 @@ export const mcpFailLine = (uuid = `s${++seq}`, servers = [{ name: 'demo' }]) =>
 // A config object as produced by config.js (for metric/rule tests). Override any field.
 export const cfg = (o = {}) => ({
   settings: {}, userSettings: {}, userSettingsPath: 'settings.json', userSettingsError: false,
-  env: {}, plugins: [], duplicates: [],
+  env: {}, plugins: [], duplicates: [], hookOwners: new Map(),
   facts: { pluginCount: 0, duplicatePluginCount: 0, claudeMdLines: 0, memoryIndexBytes: 0 },
   ...o,
 });
