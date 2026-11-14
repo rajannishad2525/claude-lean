@@ -26,6 +26,15 @@ Every tool call is another API request, and every request re-reads the whole con
 
 Needs Node 18 or newer and no packages. It is tested on Linux, macOS and Windows with Node 18, 20 and 22 (see the `test` workflow). It reads `~/.claude`, or the directory in `CLAUDE_CONFIG_DIR` if you set that variable (or pass `--claude-dir`).
 
+No clone needed, if you just want to run it:
+
+```bash
+npx github:rajannishad2525/claude-lean doctor
+npx github:rajannishad2525/claude-lean fix            # dry run
+```
+
+Or from a clone (all examples below use `node bin/lean.js`):
+
 ```bash
 git clone https://github.com/rajannishad2525/claude-lean.git && cd claude-lean
 node bin/lean.js doctor                      # all sessions under ~/.claude/projects
