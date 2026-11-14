@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { imageDecision, loadThresholds, promptDecision, shotDecision } from '../plugin/lib/guards.mjs';
+import { imageDecision, lastUsage, loadState, loadThresholds, promptDecision, saveState, shotDecision } from '../plugin/lib/guards.mjs';
 
 const th = { ctxWarn: [150000, 300000], idleMinutes: 5, idleMinCtx: 100000, imageMaxKB: 500, screenshotWarnEvery: 30, disable: [] };
 const MIN = 60_000;
@@ -80,4 +80,51 @@ test('shotDecision counts screenshot tools and warns every N calls', () => {
   assert.deepEqual(shotDecision({ tool: 'Bash', count: 5, th }), { count: 5, message: null });
   assert.equal(shotDecision({ tool: 'mcp__plugin_playwright_playwright__browser_take_screenshot', count: 0, th }).count, 1);
   assert.deepEqual(shotDecision({ tool: 'mcp__x__computer', count: 29, th: { ...th, disable: ['screenshot'] } }), { count: 29, message: null });
+});
+
+const usageLine = ({ id, cr, cc = 0, at, side = false, model = 'claude-sonnet-5-5' }) => JSON.stringify({
+  type: 'assistant', timestamp: new Date(at).toISOString(), isSidechain: side,
+  message: { id, model, usage: { input_tokens: 1, cache_read_input_tokens: cr, cache_creation_input_tokens: cc, output_tokens: 1 } },
+});
+const transcript = (lines) => {
+  const f = join(mkdtempSync(join(tmpdir(), 'lean-tail-')), 't.jsonl');
+  writeFileSync(f, `${lines.join('\n')}\n`);
+  return f;
+};
+
+test('lastUsage reads ctx and time from the last real assistant line, skipping sidechain and synthetic', () => {
+  const f = transcript([
+    usageLine({ id: 'a', cr: 100e3, at: 1000 }),
+    usageLine({ id: 'b', cr: 200e3, cc: 5e3, at: 2000 }),
+    usageLine({ id: 'c', cr: 999e3, at: 3000, side: true }),
+    usageLine({ id: 'd', cr: 0, at: 4000, model: '<synthetic>' }),
+    JSON.stringify({ type: 'user', message: { content: 'hi' } }),
+  ]);
+  assert.deepEqual(lastUsage(f), { ctx: 205001, ts: 2000 });
+});
+
+test('lastUsage works on a transcript far bigger than the tail window (cut first line is dropped)', () => {
+  const filler = JSON.stringify({ type: 'user', message: { content: 'x'.repeat(2000) } });
+  const f = transcript([usageLine({ id: 'old', cr: 50e3, at: 1 }), ...Array.from({ length: 400 }, () => filler), usageLine({ id: 'new', cr: 300e3, at: 5000 })]);
+  assert.equal(lastUsage(f).ctx, 300001);
+});
+
+test('lastUsage widens the window when the last usage line is far from the end', () => {
+  const huge = JSON.stringify({ type: 'user', message: { content: 'x'.repeat(300 * 1024) } });
+  assert.equal(lastUsage(transcript([usageLine({ id: 'a', cr: 120e3, at: 7 }), huge])).ctx, 120001);
+});
+
+test('lastUsage returns null when there is no usage, or the file is empty or missing', () => {
+  assert.equal(lastUsage(transcript([JSON.stringify({ type: 'user', message: { content: 'hi' } })])), null);
+  assert.equal(lastUsage(transcript([])), null);
+  assert.equal(lastUsage(join(tmpdir(), 'lean-does-not-exist.jsonl')), null);
+});
+
+test('state round-trips per session, sanitizes the session id and survives a missing dir', () => {
+  process.env.CLAUDE_PLUGIN_DATA = join(mkdtempSync(join(tmpdir(), 'lean-state-')), 'nested');
+  assert.deepEqual(loadState('s1'), {});
+  saveState('s1', { level: 2 });
+  assert.deepEqual(loadState('s1'), { level: 2 });
+  saveState('../evil', { level: 1 });
+  assert.ok(existsSync(join(process.env.CLAUDE_PLUGIN_DATA, '___evil.json')), 'no path traversal');
 });
