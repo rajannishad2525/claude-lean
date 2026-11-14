@@ -3,11 +3,20 @@ import { createInterface } from 'node:readline';
 
 // Every computer-use action returns a screenshot, so all calls to the tool count.
 const SCREENSHOT_TOOL = /(__computer$|screenshot)/i;
+// Line shapes verified on real transcripts (Plan 2 Task 1). Only `hook_success` is counted:
+// hook_additional_context / hook_system_message / hook_non_blocking_error would double count the text.
+const hookEvent = (a) => a.hookEvent || String(a.hookName || '').split(':')[0] || '?';
+const HOOK_TEXT = (a) => String(a.stdout ?? a.content ?? '');
 
 export function createSummarizer(file = '') {
   const reqs = new Map();      // message id -> request (one API response spans many lines)
   const toolNames = new Map(); // tool_use id -> tool name
-  const s = { file, toolVolume: {}, imageResults: 0, imageBytes: 0, screenshotCalls: 0, agentSpawns: 0, version: null };
+  const seen = new Set();      // uuids of non-assistant lines (a resumed session repeats lines)
+  const failedMcp = new Set(); // distinct failed MCP servers (deltas re-list them); never leaves this file
+  const s = {
+    file, toolVolume: {}, imageResults: 0, imageBytes: 0, screenshotCalls: 0, agentSpawns: 0, version: null,
+    hookChars: {}, mcpFailures: 0, assistantLines: 0, usageLines: 0,
+  };
 
   const bump = (name, chars) => {
     const t = (s.toolVolume[name] ??= { n: 0, chars: 0 });
@@ -19,12 +28,31 @@ export function createSummarizer(file = '') {
     if (!line) return;
     let o;
     try { o = JSON.parse(line); } catch { return; }
+    if (o.version) s.version = o.version;
+    if (o.type !== 'assistant' && o.uuid) {
+      if (seen.has(o.uuid)) return;
+      seen.add(o.uuid);
+    }
+
+    const a = o.attachment;
+    if (o.type === 'attachment' && a?.type === 'hook_success') {
+      const ev = hookEvent(a);
+      s.hookChars[ev] = (s.hookChars[ev] || 0) + HOOK_TEXT(a).length;
+      return;
+    }
+    if (o.type === 'attachment' && a?.type === 'deferred_tools_delta') {
+      for (const e of Array.isArray(a.failedMcpServers) ? a.failedMcpServers : []) failedMcp.add(JSON.stringify(e));
+      s.mcpFailures = failedMcp.size;
+      return;
+    }
+
     const m = o.message;
     if (!m) return;
-    if (o.version) s.version = o.version;
 
     if (o.type === 'assistant') {
+      s.assistantLines++;
       if (m.usage) {
+        s.usageLines++;
         const u = m.usage;
         reqs.set(m.id || o.requestId || o.uuid, {
           ctx: (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0),
@@ -66,7 +94,9 @@ export function createSummarizer(file = '') {
       r.gapMs = prev !== null && r.ts !== null ? r.ts - prev : null;
       prev = r.ts;
     }
-    return { ...s, requests, firstCtx: requests[0]?.ctx ?? 0 };
+    // Assistant lines exist but none carries usage: the format changed, do not report wrong numbers.
+    const unsupported = s.assistantLines > 0 && s.usageLines === 0;
+    return { ...s, requests, firstCtx: requests[0]?.ctx ?? 0, unsupported };
   }
 
   return { push, result };

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { summarizeLines } from '../src/summarize.js';
-import { assistantLine, toolUse, toolResultLine, imageBlock } from './helpers.js';
+import { assistantLine, toolUse, toolResultLine, imageBlock, hookLine, mcpFailLine } from './helpers.js';
 
 test('lines sharing a message id count as one request, last usage wins', () => {
   const lines = [
@@ -46,4 +46,31 @@ test('garbage and empty lines are skipped, version is captured', () => {
   const s = summarizeLines(['', 'not json', '{"type":"summary"}', assistantLine({ id: 'a' })]);
   assert.equal(s.requests.length, 1);
   assert.equal(s.version, '2.1.300');
+});
+
+test('hook output and MCP failures are counted once per uuid, never per response line', () => {
+  const lines = [
+    hookLine('SessionStart', 100, 'h1'),
+    hookLine('SessionStart', 100, 'h1'), // same line repeated (resumed session)
+    hookLine('UserPromptSubmit', 50, 'h2'),
+    mcpFailLine('m1'),
+    mcpFailLine('m1'),                       // repeated line
+    mcpFailLine('m2'),                       // same server re-listed in a later delta
+    mcpFailLine('m3', [{ name: 'other' }]),  // a second, different server
+    assistantLine({ id: 'a', cr: 10 }), // one response, two lines
+    assistantLine({ id: 'a', cr: 10, out: 5 }),
+  ];
+  const s = summarizeLines(lines);
+  assert.deepEqual(s.hookChars, { SessionStart: 100, UserPromptSubmit: 50 });
+  assert.equal(s.mcpFailures, 2, 'distinct failed servers, not delta lines');
+  assert.equal(s.requests.length, 1);
+});
+
+test('assistant lines with no usage data mark the transcript unsupported', () => {
+  const noUsage = JSON.stringify({ type: 'assistant', timestamp: new Date(0).toISOString(), message: { id: 'a', content: [] } });
+  const bad = summarizeLines([noUsage, noUsage]);
+  assert.equal(bad.unsupported, true);
+  assert.equal(bad.requests.length, 0);
+  assert.equal(summarizeLines([assistantLine({ id: 'a' })]).unsupported, false);
+  assert.equal(summarizeLines([]).unsupported, false);
 });

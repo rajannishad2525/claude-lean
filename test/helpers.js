@@ -22,5 +22,22 @@ export const req = (ctx, o = {}) => ({ ctx, cc: 0, cr: 0, out: 0, model: 'claude
 // A session summary as produced by summarize.js (for metric tests).
 export const sess = (requests, o = {}) => ({
   file: 'x.jsonl', requests, firstCtx: requests[0]?.ctx ?? 0,
-  screenshotCalls: 0, agentSpawns: 0, imageResults: 0, imageBytes: 0, toolVolume: {}, version: null, ...o,
+  screenshotCalls: 0, agentSpawns: 0, imageResults: 0, imageBytes: 0, toolVolume: {}, version: null,
+  hookChars: {}, mcpFailures: 0, unsupported: false, ...o,
+});
+
+export const hookLine = (event, chars, uuid = `h${++seq}`) =>
+  JSON.stringify({ type: 'attachment', uuid, attachment: { type: 'hook_success', hookEvent: event, stdout: 'x'.repeat(chars), content: `${event} hook success` } });
+
+// Real shape (Task 1 probe): attachment deferred_tools_delta with failedMcpServers = array of objects,
+// re-listed across deltas within a session.
+export const mcpFailLine = (uuid = `s${++seq}`, servers = [{ name: 'demo' }]) =>
+  JSON.stringify({ type: 'attachment', uuid, attachment: { type: 'deferred_tools_delta', failedMcpServers: servers } });
+
+// A config object as produced by config.js (for metric/rule tests). Override any field.
+export const cfg = (o = {}) => ({
+  settings: {}, userSettings: {}, userSettingsPath: 'settings.json', userSettingsError: false,
+  env: {}, plugins: [], duplicates: [],
+  facts: { pluginCount: 0, duplicatePluginCount: 0, claudeMdLines: 0, memoryIndexBytes: 0 },
+  ...o,
 });
