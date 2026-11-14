@@ -1,8 +1,8 @@
 {
   "id": "prompt-suggestions",
-  "title": "Prompt suggestions cost an extra request per turn",
-  "source": "unverified: setting name promptSuggestionEnabled not confirmed in docs",
-  "confidence": "unverified",
+  "title": "Prompt suggestions send an extra request after each response",
+  "source": "https://code.claude.com/docs/en/costs (a short request after each response, mostly cache reads plus a few output tokens); setting promptSuggestionEnabled: https://code.claude.com/docs/en/settings-reference",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "setting",
@@ -10,7 +10,12 @@
     "when": "notFalse"
   },
   "fix": {
-    "type": "advice",
-    "text": "Turn prompt suggestions off in /config if you do not use them."
+    "type": "settings",
+    "text": "Set promptSuggestionEnabled to false (the Prompt suggestions toggle in /config). Each suggestion re-reads your whole cached context.",
+    "edit": {
+      "op": "setKey",
+      "key": "promptSuggestionEnabled",
+      "value": false
+    }
   }
 }

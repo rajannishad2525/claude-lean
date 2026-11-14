@@ -1,8 +1,8 @@
 {
   "id": "subagent-ttl",
-  "title": "Subagent prompt-cache TTL not set",
-  "source": "unverified: setting name subagentPromptCacheTtl comes from the design spec; not confirmed in docs",
-  "confidence": "unverified",
+  "title": "Subagent and background requests use a separate prompt-cache TTL",
+  "source": "https://code.claude.com/docs/en/prompt-caching (subagentPromptCacheTtl, or CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL; requires v2.1.242+); https://code.claude.com/docs/en/settings-reference",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "setting",
@@ -11,6 +11,6 @@
   },
   "fix": {
     "type": "advice",
-    "text": "Subagents may default to a 5-minute cache TTL. If your client supports subagentPromptCacheTtl, set a longer one (check the docs for valid values)."
+    "text": "Requests outside the main conversation keep the five-minute default until you choose a TTL for them. A one-hour TTL keeps their cache warm across longer pauses, but the API bills one-hour cache writes at a higher rate, so only set subagentPromptCacheTtl if your subagents regularly pause for more than five minutes."
   }
 }

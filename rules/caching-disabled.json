@@ -1,8 +1,8 @@
 {
   "id": "caching-disabled",
   "title": "Prompt caching is disabled by an environment variable",
-  "source": "unverified: DISABLE_PROMPT_CACHING* variables (to check against https://code.claude.com/docs/en/prompt-caching)",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/prompt-caching#disable-prompt-caching (DISABLE_PROMPT_CACHING, _HAIKU, _SONNET, _OPUS, _FABLE); https://code.claude.com/docs/en/env-vars",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "env",

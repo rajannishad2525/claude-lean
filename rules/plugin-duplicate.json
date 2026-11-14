@@ -1,8 +1,8 @@
 {
   "id": "plugin-duplicate",
   "title": "Same plugin enabled from more than one marketplace",
-  "source": "unverified: measured on one user; settings key enabledPlugins (to check against https://code.claude.com/docs/en/settings)",
-  "confidence": "unverified",
+  "source": "measured on transcripts/settings; enabledPlugins turns plugins on or off per scope: https://code.claude.com/docs/en/settings-reference",
+  "confidence": "official",
   "detect": {
     "metric": "duplicatePlugins"
   },

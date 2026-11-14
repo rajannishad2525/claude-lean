@@ -1,8 +1,8 @@
 {
   "id": "autoupdate-rebuild",
   "title": "Auto-update can rebuild the cache mid-work",
-  "source": "unverified: env DISABLE_AUTOUPDATER (to check against https://code.claude.com/docs/en/settings)",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/prompt-caching (an upgrade means a cold cache on the first turn; DISABLE_AUTOUPDATER=1 controls when upgrades apply); https://code.claude.com/docs/en/env-vars",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "env",

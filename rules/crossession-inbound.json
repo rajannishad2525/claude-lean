@@ -1,8 +1,8 @@
 {
   "id": "crossession-inbound",
   "title": "Cross-session messages can open turns while idle",
-  "source": "unverified: setting crossSessionInbound and value \"hold\" come from the design spec",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/costs (set crossSessionInbound to hold); https://code.claude.com/docs/en/settings-reference (valid in any settings file)",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "setting",

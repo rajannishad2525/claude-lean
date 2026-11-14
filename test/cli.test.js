@@ -35,7 +35,7 @@ test('doctor prints a ranked text report', () => {
 test('doctor includes config rules and marks fixable ones', () => {
   const dir = tmp();
   const out = lean(['doctor', '--claude-dir', join(dir, 'claude'), '--file', bigSession()], dir);
-  assert.match(out, /\[unverified\] Auto-update can rebuild the cache mid-work/);
+  assert.match(out, /\[official\] Auto-update can rebuild the cache mid-work/);
   assert.match(out, /\[lean fix can apply this\]/);
 });
 
@@ -66,30 +66,25 @@ const settingsWith = (obj) => {
   return { dir, claudeDir: join(dir, 'claude'), path: join(dir, 'claude', 'settings.json') };
 };
 
-test('fix is a dry run by default and skips unverified rules', () => {
+// Unverified-rule skipping is unit-tested in fix.test.js; every shipped settings rule is documented ("official").
+test('fix is a dry run by default and writes nothing', () => {
   const { dir, claudeDir, path } = settingsWith({ theme: 'dark', enabledPlugins: { 'a@m1': true, 'a@m2': true } });
   const before = readFileSync(path, 'utf8');
   const out = lean(['fix', '--claude-dir', claudeDir], dir);
   assert.match(out, /dry run/);
-  assert.match(out, /skipped \(unverified/);
-  assert.match(out, /Nothing to change/);
-  assert.equal(readFileSync(path, 'utf8'), before);
-});
-
-test('fix --include-unverified without --apply lists edits but writes nothing', () => {
-  const { dir, claudeDir, path } = settingsWith({ theme: 'dark', enabledPlugins: { 'a@m1': true, 'a@m2': true } });
-  const before = readFileSync(path, 'utf8');
-  const out = lean(['fix', '--include-unverified', '--claude-dir', claudeDir], dir);
   assert.match(out, /would: disable plugin a@m2/);
   assert.match(out, /would: set env DISABLE_AUTOUPDATER = "1"/);
+  assert.match(out, /would: set crossSessionInbound = "hold"/);
   assert.match(out, /Nothing was written/);
+  assert.doesNotMatch(out, /skipped/);
   assert.equal(readFileSync(path, 'utf8'), before);
+  assert.equal(readdirSync(claudeDir).length, 1, 'no backup in a dry run');
 });
 
 test('fix --apply backs up, edits only named keys, and a second run is a no-op', () => {
   const { dir, claudeDir, path } = settingsWith({ theme: 'dark', enabledPlugins: { 'a@m1': true, 'a@m2': true } });
   const before = readFileSync(path, 'utf8');
-  lean(['fix', '--apply', '--include-unverified', '--claude-dir', claudeDir], dir);
+  lean(['fix', '--apply', '--claude-dir', claudeDir], dir);
   const backups = readdirSync(claudeDir).filter((f) => f.startsWith('settings.json.lean-backup-'));
   assert.equal(backups.length, 1);
   assert.equal(readFileSync(join(claudeDir, backups[0]), 'utf8'), before);
@@ -97,7 +92,10 @@ test('fix --apply backs up, edits only named keys, and a second run is a no-op',
   assert.equal(s.theme, 'dark');
   assert.deepEqual(s.enabledPlugins, { 'a@m1': true, 'a@m2': false });
   assert.equal(s.env.DISABLE_AUTOUPDATER, '1');
-  const again = lean(['fix', '--apply', '--include-unverified', '--claude-dir', claudeDir], dir);
+  assert.equal(s.crossSessionInbound, 'hold');
+  assert.equal(s.promptSuggestionEnabled, false);
+  assert.equal(s.idleCompaction, false);
+  const again = lean(['fix', '--apply', '--claude-dir', claudeDir], dir);
   assert.match(again, /Nothing to change/);
   assert.equal(readdirSync(claudeDir).filter((f) => f.startsWith('settings.json.lean-backup-')).length, 1);
 });
@@ -105,6 +103,6 @@ test('fix --apply backs up, edits only named keys, and a second run is a no-op',
 test('fix refuses to touch a settings.json that is not valid JSON', () => {
   const dir = tmp({ 'claude/settings.json': '{ not json' });
   const path = join(dir, 'claude', 'settings.json');
-  assert.throws(() => lean(['fix', '--apply', '--include-unverified', '--claude-dir', join(dir, 'claude')], dir), /not valid JSON/);
+  assert.throws(() => lean(['fix', '--apply', '--claude-dir', join(dir, 'claude')], dir), /not valid JSON/);
   assert.equal(readFileSync(path, 'utf8'), '{ not json');
 });

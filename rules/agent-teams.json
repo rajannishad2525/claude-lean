@@ -1,8 +1,8 @@
 {
   "id": "agent-teams",
   "title": "Agent teams enabled",
-  "source": "unverified: env CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS and the ~7x token claim come from the design spec",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/costs (agent teams are off by default; about 7x the tokens of a standard session when teammates run in plan mode)",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "env",
@@ -11,6 +11,6 @@
   },
   "fix": {
     "type": "advice",
-    "text": "Teams use many times the tokens of one session. Keep teams small and close idle teammates, or unset the variable if you do not use them."
+    "text": "Agent teams use approximately 7x more tokens when teammates run in plan mode, because each teammate keeps its own context window. Keep team tasks small and self-contained, close idle teammates, or unset CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS if you do not use them."
   }
 }

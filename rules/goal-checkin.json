@@ -1,8 +1,8 @@
 {
   "id": "goal-checkin",
   "title": "Goal check-ins can run while idle",
-  "source": "unverified: env CLAUDE_CODE_GOAL_CHECKIN_MINUTES=0 comes from the design spec",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/costs (set CLAUDE_CODE_GOAL_CHECKIN_MINUTES to 0 to turn idle check-ins off); https://code.claude.com/docs/en/env-vars",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "env",

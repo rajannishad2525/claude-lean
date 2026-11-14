@@ -1,8 +1,8 @@
 {
   "id": "idle-compaction",
   "title": "Background idle compaction may be on",
-  "source": "unverified: setting idleCompaction comes from the design spec; default value unknown",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/prompt-caching (set idleCompaction to false); on by default per https://code.claude.com/docs/en/env-vars",
+  "confidence": "official",
   "detect": {
     "metric": "settingState",
     "source": "setting",

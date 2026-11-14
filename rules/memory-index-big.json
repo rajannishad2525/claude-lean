@@ -1,8 +1,8 @@
 {
   "id": "memory-index-big",
-  "title": "Large MEMORY.md index",
-  "source": "unverified: 25 KB threshold is a heuristic (to check against https://code.claude.com/docs/en/memory)",
-  "confidence": "unverified",
+  "title": "MEMORY.md is at its load limit",
+  "source": "https://code.claude.com/docs/en/memory (auto memory loads every session: first 200 lines or 25KB)",
+  "confidence": "official",
   "detect": {
     "metric": "configAtLeast",
     "field": "memoryIndexBytes",
@@ -10,6 +10,6 @@
   },
   "fix": {
     "type": "advice",
-    "text": "MEMORY.md is loaded each session. Prune or archive old entries."
+    "text": "Only the first 200 lines or 25KB of MEMORY.md load each session; anything past that is ignored. Keep it a short index of pointers and move detail into topic files."
   }
 }

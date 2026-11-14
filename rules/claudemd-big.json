@@ -1,8 +1,8 @@
 {
   "id": "claudemd-big",
   "title": "CLAUDE.md is long",
-  "source": "unverified: 200-line threshold from the spec (to check against https://code.claude.com/docs/en/memory)",
-  "confidence": "unverified",
+  "source": "https://code.claude.com/docs/en/memory (target under 200 lines per CLAUDE.md; longer files consume more context and reduce adherence)",
+  "confidence": "official",
   "detect": {
     "metric": "configAtLeast",
     "field": "claudeMdLines",
