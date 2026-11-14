@@ -33,6 +33,7 @@ node bin/lean.js doctor --json               # machine readable
 node bin/lean.js doctor --file session.jsonl # specific session(s)
 node bin/lean.js doctor --dir /path/to/projects
 node bin/lean.js doctor --claude-dir /path/to/.claude   # use another Claude config dir
+node bin/lean.js doctor --context ctx.txt    # also break down the fixed overhead from a pasted /context output
 
 node bin/lean.js fix                         # dry run: shows what would change, writes nothing
 node bin/lean.js fix --apply                 # backs up settings.json, then writes
@@ -58,8 +59,17 @@ Transcript rules (computed from your history):
 | `screenshot-loop` | Screenshot/scroll loops in browser sessions |
 | `subagent-spawns` | Many subagent spawns in one session |
 | `opus-default` | Most requests used an Opus model |
-| `hook-stdout-big` | Hooks inject a lot of text per session (estimate from characters) |
-| `mcp-failing` | MCP servers that failed to connect |
+| `hook-stdout-big` | Hooks inject a lot of text per session (estimate from characters); the finding names the biggest sources (plugin or settings hook) |
+| `mcp-failing` | MCP servers that failed to connect in several sessions and never connected in any (intermittent startup timeouts are not flagged) |
+| `skill-desc-verbose` | The skill list sent every session is very large (it is capped at ~30,000 characters, so a full list means skills are being cut) |
+| `compact-cold` | Large compactions after a long break, without a warm cache |
+| `loop-idle` | `/loop` or scheduled tasks firing while the session is idle |
+| `thinking-heavy` | A large share of output looks like hidden thinking (estimate; only models where thinking can be tuned: Opus/Sonnet 4.6 and older) |
+| `vague-prompt-scan` | Many Grep/Glob calls among a session's first 20 tool calls |
+| `verbose-output` | Very long Bash output (20,000+ characters) entering the context |
+| `cache-ttl-5m` | Cache rebuilt after a 5 to 60 minute pause, so the five-minute lifetime was in effect (`promptCacheTtl: "1h"` helps, but one-hour writes cost more). Replaces the spec's `ttl-regression`, whose version claim is unverified. |
+
+`server-side-drain` (limit drained while your local usage fell) is intentionally not built: it needs your reported plan usage and a documented limit formula, and a "this is not your usage" verdict without them would be a guess.
 
 Config rules (computed from your settings, env and memory files):
 
@@ -78,7 +88,9 @@ Config rules (computed from your settings, env and memory files):
 | `subagent-ttl` | Separate cache TTL for subagent requests | advice (a longer TTL is billed higher) |
 | `agent-teams` | Agent teams use about 7x the tokens in plan mode | advice |
 
-Each finding carries a confidence tag: `official` (the setting and claim are in Anthropic's docs; the source line links the page), `measured` (computed from your transcripts), `unverified` (not confirmed in the docs; currently `hook-stdout-big`, `mcp-failing`, `plugin-count`, which rest on an internal transcript format or a threshold chosen here).
+Each finding carries a confidence tag: `official` (the setting and claim are in Anthropic's docs; the source line links the page), `measured` (computed from your transcripts), `unverified` (not confirmed in the docs; currently `hook-stdout-big`, `mcp-failing`, `skill-desc-verbose`, `vague-prompt-scan`, `thinking-heavy`, `plugin-count`, which rest on an internal transcript format, an estimate, or a threshold chosen here).
+
+`lean doctor --context ctx.txt` reads the text of a `/context` run that you paste into a file and ranks what fills the window (MCP tools, skills, memory files, ...). Anthropic does not document that output's layout, so the parser is deliberately loose; if it misses your lines it says so instead of guessing.
 
 ## What `lean fix` changes
 
@@ -86,7 +98,8 @@ Each finding carries a confidence tag: `official` (the setting and claim are in 
 - **Dry run is the default.** `--apply` first copies the file to `settings.json.lean-backup-<timestamp>`, then writes. Running it again changes nothing.
 - A `settings.json` that is not valid JSON is never touched.
 - If a setting lives somewhere `lean fix` does not edit (your shell, or a project settings file), it says `manual:` and leaves it alone.
-- It never edits MCP servers, hooks, CLAUDE.md, memory files or project settings. Those findings stay advice.
+- The one MCP edit: `mcp-failing` can add a server to `deniedMcpServers` (`{"serverName": ...}`), only for a server that failed in 3+ sessions and never connected in any, and only with `--include-unverified` (its detection reads an internal transcript format). Delete the entry to bring the server back.
+- It never edits hooks, CLAUDE.md, memory files or project settings. Those findings stay advice (`hook-stdout-big` tells you which plugin or settings hook is the biggest source instead).
 - Rules tagged `unverified` are skipped unless you pass `--include-unverified`.
 
 ## Guards plugin
@@ -103,6 +116,13 @@ Each finding carries a confidence tag: `official` (the setting and claim are in 
 Warnings go to you through the hook's `systemMessage` field, so they do **not** enter Claude's context and cost no tokens. (Plain hook stdout on `UserPromptSubmit` would be added to the context.) The one exception is the image guard's deny reason, which Claude reads so it can adapt. Guards never block your prompts and never fail a session: on any error they print nothing and exit 0.
 
 Try it without installing: `claude --plugin-dir ./plugin`. To stop, stop passing the flag.
+
+Install it from this repository's marketplace (replace `<github-owner>` with the account that hosts the repo):
+
+```bash
+claude plugin marketplace add <github-owner>/claude-lean
+claude plugin install lean-guards@lean-tools
+```
 
 Optional settings go in `~/.claude/claude-lean.json` (all keys optional; wrong types are ignored):
 
