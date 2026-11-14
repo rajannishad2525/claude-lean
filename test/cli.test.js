@@ -1,34 +1,110 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { assistantLine } from './helpers.js';
 
-const fixture = () => {
-  const lines = Array.from({ length: 30 }, (_, i) => assistantLine({ id: `r${i}`, cr: 400e3, at: i * 1000 }));
-  const file = join(mkdtempSync(join(tmpdir(), 'lean-cli-')), 's.jsonl');
-  writeFileSync(file, lines.join('\n'));
-  return file;
-};
-const run = (...args) => execFileSync(process.execPath, ['bin/lean.js', 'doctor', ...args], { encoding: 'utf8' });
+const BIN = fileURLToPath(new URL('../bin/lean.js', import.meta.url));
+// The machine's real Claude settings must never leak into a test.
+const cleanEnv = () => Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(DISABLE_|CLAUDE_)/.test(k)));
+
+function tmp(files = {}) {
+  const d = mkdtempSync(join(tmpdir(), 'lean-cli-'));
+  for (const [p, c] of Object.entries(files)) {
+    mkdirSync(dirname(join(d, p)), { recursive: true });
+    writeFileSync(join(d, p), c);
+  }
+  return d;
+}
+const lean = (args, dir) => execFileSync(process.execPath, [BIN, ...args], { encoding: 'utf8', cwd: dir, env: cleanEnv(), stdio: 'pipe' });
+const transcript = (lines) => join(tmp({ 's.jsonl': lines.join('\n') }), 's.jsonl');
+const bigSession = () => transcript(Array.from({ length: 30 }, (_, i) => assistantLine({ id: `r${i}`, cr: 400e3, at: i * 1000 })));
 
 test('doctor prints a ranked text report', () => {
-  const out = run('--file', fixture());
+  const dir = tmp();
+  const out = lean(['doctor', '--claude-dir', join(dir, 'claude'), '--file', bigSession()], dir);
   assert.match(out, /claude-lean doctor: 1 sessions, 30 requests/);
   assert.match(out, /1\. \[official\] Context grew past 300k tokens/);
   assert.match(out, /found: +100% of 30 requests ran above 300k context/);
   assert.match(out, /fix: /);
 });
 
+test('doctor includes config rules and marks fixable ones', () => {
+  const dir = tmp();
+  const out = lean(['doctor', '--claude-dir', join(dir, 'claude'), '--file', bigSession()], dir);
+  assert.match(out, /\[unverified\] Auto-update can rebuild the cache mid-work/);
+  assert.match(out, /\[lean fix can apply this\]/);
+});
+
 test('doctor --json is machine readable', () => {
-  const j = JSON.parse(run('--file', fixture(), '--json'));
+  const dir = tmp();
+  const j = JSON.parse(lean(['doctor', '--json', '--claude-dir', join(dir, 'claude'), '--file', bigSession()], dir));
   assert.equal(j.sessions, 1);
   assert.equal(j.requests, 30);
+  assert.deepEqual(j.warnings, []);
   assert.ok(j.findings.some((f) => f.id === 'ctx-300k' && f.confidence === 'official'));
 });
 
+test('unsupported transcript format is reported, not silently dropped', () => {
+  const dir = tmp();
+  const bad = JSON.stringify({ type: 'assistant', timestamp: new Date(0).toISOString(), message: { id: 'a', content: [] } });
+  const out = lean(['doctor', '--claude-dir', join(dir, 'claude'), '--file', transcript([bad])], dir);
+  assert.match(out, /warning: 1 transcript file\(s\) have assistant lines without usage data/);
+  assert.match(out, /No supported transcripts were analysed/);
+  assert.doesNotMatch(out, /No known causes found/);
+});
+
 test('unknown command exits non-zero with usage', () => {
-  assert.throws(() => execFileSync(process.execPath, ['bin/lean.js', 'nope'], { stdio: 'pipe' }), /usage: lean doctor/);
+  assert.throws(() => execFileSync(process.execPath, [BIN, 'nope'], { stdio: 'pipe' }), /usage: lean doctor/);
+});
+
+const settingsWith = (obj) => {
+  const dir = tmp({ 'claude/settings.json': JSON.stringify(obj, null, 2) });
+  return { dir, claudeDir: join(dir, 'claude'), path: join(dir, 'claude', 'settings.json') };
+};
+
+test('fix is a dry run by default and skips unverified rules', () => {
+  const { dir, claudeDir, path } = settingsWith({ theme: 'dark', enabledPlugins: { 'a@m1': true, 'a@m2': true } });
+  const before = readFileSync(path, 'utf8');
+  const out = lean(['fix', '--claude-dir', claudeDir], dir);
+  assert.match(out, /dry run/);
+  assert.match(out, /skipped \(unverified/);
+  assert.match(out, /Nothing to change/);
+  assert.equal(readFileSync(path, 'utf8'), before);
+});
+
+test('fix --include-unverified without --apply lists edits but writes nothing', () => {
+  const { dir, claudeDir, path } = settingsWith({ theme: 'dark', enabledPlugins: { 'a@m1': true, 'a@m2': true } });
+  const before = readFileSync(path, 'utf8');
+  const out = lean(['fix', '--include-unverified', '--claude-dir', claudeDir], dir);
+  assert.match(out, /would: disable plugin a@m2/);
+  assert.match(out, /would: set env DISABLE_AUTOUPDATER = "1"/);
+  assert.match(out, /Nothing was written/);
+  assert.equal(readFileSync(path, 'utf8'), before);
+});
+
+test('fix --apply backs up, edits only named keys, and a second run is a no-op', () => {
+  const { dir, claudeDir, path } = settingsWith({ theme: 'dark', enabledPlugins: { 'a@m1': true, 'a@m2': true } });
+  const before = readFileSync(path, 'utf8');
+  lean(['fix', '--apply', '--include-unverified', '--claude-dir', claudeDir], dir);
+  const backups = readdirSync(claudeDir).filter((f) => f.startsWith('settings.json.lean-backup-'));
+  assert.equal(backups.length, 1);
+  assert.equal(readFileSync(join(claudeDir, backups[0]), 'utf8'), before);
+  const s = JSON.parse(readFileSync(path, 'utf8'));
+  assert.equal(s.theme, 'dark');
+  assert.deepEqual(s.enabledPlugins, { 'a@m1': true, 'a@m2': false });
+  assert.equal(s.env.DISABLE_AUTOUPDATER, '1');
+  const again = lean(['fix', '--apply', '--include-unverified', '--claude-dir', claudeDir], dir);
+  assert.match(again, /Nothing to change/);
+  assert.equal(readdirSync(claudeDir).filter((f) => f.startsWith('settings.json.lean-backup-')).length, 1);
+});
+
+test('fix refuses to touch a settings.json that is not valid JSON', () => {
+  const dir = tmp({ 'claude/settings.json': '{ not json' });
+  const path = join(dir, 'claude', 'settings.json');
+  assert.throws(() => lean(['fix', '--apply', '--include-unverified', '--claude-dir', join(dir, 'claude')], dir), /not valid JSON/);
+  assert.equal(readFileSync(path, 'utf8'), '{ not json');
 });
