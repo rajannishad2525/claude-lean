@@ -1,0 +1,8 @@
+{
+  "ctxWarn": [150000, 300000],
+  "idleMinutes": 5,
+  "idleMinCtx": 100000,
+  "imageMaxKB": 500,
+  "screenshotWarnEvery": 30,
+  "disable": []
+}
