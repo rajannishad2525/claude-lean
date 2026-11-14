@@ -121,10 +121,15 @@ export const metrics = {
   },
 
   mcpPersistent(sessions, { minSessions }) {
+    // Startup timeouts are often intermittent, so a server that connected in ANY analysed session is not a dead server.
+    const connected = new Set(sessions.flatMap((s) => s.mcpConnected ?? []));
     const counts = new Map();
     for (const s of sessions) for (const name of s.failedMcpNames ?? []) counts.set(name, (counts.get(name) ?? 0) + 1);
-    const targets = [...counts].filter(([, c]) => c >= minSessions).map(([name]) => name).sort();
-    return { hit: targets.length > 0, weightTokens: 0, targets, evidence: `${targets.length} MCP server(s) failed to connect in at least ${minSessions} sessions` };
+    const targets = [...counts]
+      .filter(([name, c]) => c >= minSessions && !connected.has(name.replace(/[^a-zA-Z0-9_-]/g, '_')))
+      .map(([name]) => name)
+      .sort();
+    return { hit: targets.length > 0, weightTokens: 0, targets, evidence: `${targets.length} MCP server(s) failed to connect in at least ${minSessions} sessions and never connected in any analysed session` };
   },
 
   thinkingShare(sessions, { minTokens, minShare }) {

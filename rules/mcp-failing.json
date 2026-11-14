@@ -1,6 +1,6 @@
 {
   "id": "mcp-failing",
-  "title": "MCP servers keep failing to connect",
+  "title": "MCP servers that never connect",
   "source": "unverified: failed servers read from transcript attachments (internal format); setting deniedMcpServers (entry {\"serverName\": ...}) documented at https://code.claude.com/docs/en/settings-reference and https://code.claude.com/docs/en/mcp",
   "confidence": "unverified",
   "needs": "transcripts",
@@ -10,7 +10,7 @@
   },
   "fix": {
     "type": "settings",
-    "text": "Block MCP servers that fail to connect in several sessions (deniedMcpServers). A configured but broken server still costs startup time. Delete its entry to bring it back.",
+    "text": "Block MCP servers that failed to connect in several sessions and never connected in any of them (deniedMcpServers). A server that is configured but dead still costs startup time. Servers that only time out sometimes are left alone. Delete the entry to bring a server back.",
     "edit": {
       "op": "denyMcp"
     }

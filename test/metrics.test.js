@@ -139,3 +139,11 @@ test('hookInjection names the biggest sources when owners are known', () => {
   assert.match(r.evidence, /biggest sources: plugin-a@m 83%, settings hooks 17%/);
   assert.match(metrics.hookInjection([s], { above: 3000, events: ['SessionStart'] }).evidence, /biggest sources: unknown source 100%/);
 });
+
+test('mcpPersistent never targets a server that connected in any analysed session (intermittent timeouts are not dead servers)', () => {
+  const flaky = () => sess([req(1)], { failedMcpNames: ['demo', 'plugin:ctx:ctx'] });
+  const worked = sess([req(1)], { mcpConnected: ['plugin_ctx_ctx'] });
+  const r = metrics.mcpPersistent([flaky(), flaky(), flaky(), worked], { minSessions: 3 });
+  assert.deepEqual(r.targets, ['demo'], 'the plugin server connected once, so it is not a target');
+  assert.match(r.evidence, /never connected/);
+});

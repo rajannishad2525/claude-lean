@@ -123,3 +123,22 @@ test('first-turn search calls and big Bash results are counted', () => {
   assert.equal(s.firstSearchCalls, 20, 'only the first 20 tool calls of a session count');
   assert.equal(s.bigBashResults, 1);
 });
+
+test('a failed MCP server that connected later in the same session is not counted as failing', () => {
+  const delta = (uuid, addedNames, failed = []) => JSON.stringify({ type: 'attachment', uuid, attachment: { type: 'deferred_tools_delta', addedNames, failedMcpServers: failed } });
+  const s = summarizeLines([
+    mcpFailLine('f1', [{ name: 'demo' }, { name: 'plugin:ctx:ctx' }, { name: 'late' }, { name: 'broken' }]),
+    assistantLine({ id: 'a', content: [toolUse('t1', 'mcp__demo__ping')] }),         // connected: it was used
+    delta('d1', ['mcp__plugin_ctx_ctx__query', 'mcp__late__x', 'Read']),              // connected: its tools were added
+  ]);
+  assert.deepEqual(s.failedMcpNames, ['broken']);
+  assert.equal(s.mcpFailures, 1);
+});
+
+test('servers that connected are listed by tool prefix so callers can tell intermittent from dead', () => {
+  const s = summarizeLines([
+    mcpFailLine('f1', [{ name: 'demo' }]),
+    assistantLine({ id: 'a', content: [toolUse('t1', 'mcp__demo__ping'), toolUse('t2', 'mcp__plugin_ctx_ctx__query')] }),
+  ]);
+  assert.deepEqual([...s.mcpConnected].sort(), ['demo', 'plugin_ctx_ctx']);
+});

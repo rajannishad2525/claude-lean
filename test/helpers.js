@@ -23,7 +23,7 @@ export const req = (ctx, o = {}) => ({ ctx, cc: 0, cr: 0, out: 0, model: 'claude
 export const sess = (requests, o = {}) => ({
   file: 'x.jsonl', requests, firstCtx: requests[0]?.ctx ?? 0,
   screenshotCalls: 0, agentSpawns: 0, imageResults: 0, imageBytes: 0, toolVolume: {}, version: null,
-  hookChars: {}, hookByCommand: {}, mcpFailures: 0, failedMcpNames: [], unsupported: false,
+  hookChars: {}, hookByCommand: {}, mcpFailures: 0, failedMcpNames: [], mcpConnected: [], unsupported: false,
   skillListingChars: 0, compactions: [], scheduledFires: 0, bigBashResults: 0, firstSearchCalls: 0, ...o,
 });
 

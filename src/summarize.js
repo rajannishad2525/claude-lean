@@ -10,6 +10,9 @@ const FIRST_CALLS = 20;
 // hook_additional_context / hook_system_message / hook_non_blocking_error would double count the text.
 const hookEvent = (a) => a.hookEvent || String(a.hookName || '').split(':')[0] || '?';
 const HOOK_TEXT = (a) => String(a.stdout ?? a.content ?? '');
+// mcp__<server>__<tool> -> <server>; a plugin server looks like mcp__plugin_<plugin>_<server>__<tool>.
+const mcpServer = (toolName) => /^mcp__(.+?)__/.exec(toolName || '')?.[1] ?? null;
+const mcpToolPrefix = (serverName) => serverName.replace(/[^a-zA-Z0-9_-]/g, '_');
 
 export function createSummarizer(file = '') {
   const reqs = new Map();      // message id -> request (one API response spans many lines)
@@ -17,6 +20,7 @@ export function createSummarizer(file = '') {
   const seen = new Set();      // uuids of non-assistant lines (a resumed session repeats lines)
   const seenAsst = new Set();  // uuids of assistant lines: block accumulation must not double count
   const failedMcp = new Set(); // distinct failed MCP servers (deltas re-list them)
+  const mcpSeen = new Set();   // MCP servers that did connect in this session (their tools were added or used)
   let toolSeq = 0;
   let lastAssistantTs = null;
   const s = {
@@ -53,8 +57,10 @@ export function createSummarizer(file = '') {
     }
     if (o.type === 'attachment' && a?.type === 'deferred_tools_delta') {
       for (const e of Array.isArray(a.failedMcpServers) ? a.failedMcpServers : []) failedMcp.add(typeof e?.name === 'string' ? e.name : JSON.stringify(e));
-      s.mcpFailures = failedMcp.size;
-      s.failedMcpNames = [...failedMcp];
+      for (const n of Array.isArray(a.addedNames) ? a.addedNames : []) {
+        const srv = mcpServer(n);
+        if (srv) mcpSeen.add(srv);
+      }
       return;
     }
     if (o.type === 'attachment' && a?.type === 'skill_listing') {
@@ -114,6 +120,8 @@ export function createSummarizer(file = '') {
       for (const c of blocks) {
         if (c.type !== 'tool_use' || toolNames.has(c.id)) continue;
         toolNames.set(c.id, c.name);
+        const srv = mcpServer(c.name);
+        if (srv) mcpSeen.add(srv);
         toolSeq++;
         if (toolSeq <= FIRST_CALLS && SEARCH_TOOLS.has(c.name)) s.firstSearchCalls++;
         if (c.name === 'Agent' || c.name === 'Task') s.agentSpawns++;
@@ -148,7 +156,9 @@ export function createSummarizer(file = '') {
     }
     // Assistant lines exist but none carries usage: the format changed, do not report wrong numbers.
     const unsupported = s.assistantLines > 0 && s.usageLines === 0;
-    return { ...s, requests, firstCtx: requests[0]?.ctx ?? 0, unsupported };
+    // A server listed as failed that later connected in the same session is not a persistent failure.
+    const failedMcpNames = [...failedMcp].filter((n) => !mcpSeen.has(mcpToolPrefix(n)));
+    return { ...s, failedMcpNames, mcpConnected: [...mcpSeen], mcpFailures: failedMcpNames.length, requests, firstCtx: requests[0]?.ctx ?? 0, unsupported };
   }
 
   return { push, result };
