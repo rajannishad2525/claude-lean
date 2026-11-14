@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/prompt-guard.mjs\"", "timeout": 5 }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Read", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/image-guard.mjs\"", "timeout": 5 }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "mcp__.*__computer|.*screenshot.*", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/screenshot-guard.mjs\"", "timeout": 5 }] }
+    ]
+  }
+}
